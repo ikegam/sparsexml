@@ -6,7 +6,7 @@
 void add_private_test(CU_pSuite*);
 
 void test_parse_simple_xml(void) {
-  SXMLParser* parser;
+  SXMLExplorer* explorer;
   char xml[] = "<?xml version=\"1.1\"?><tag></tag>";
   unsigned char ret;
 
@@ -18,20 +18,20 @@ void test_parse_simple_xml(void) {
       c++;
     }
     if (c==2) {
-      return SXMLParserStop;
+      return SXMLExplorerStop;
     }
-    return SXMLParserContinue;
+    return SXMLExplorerContinue;
   }
 
-  parser = sxml_init_parser();
-  sxml_register_func(parser, &on_tag, NULL, NULL, NULL);
-  ret = sxml_run_parser(parser, xml);
-  CU_ASSERT (ret == SXMLParserInterrupted);
-  sxml_destroy_parser(parser);
+  explorer = sxml_make_explorer();
+  sxml_register_func(explorer, &on_tag, NULL, NULL, NULL);
+  ret = sxml_run_explorer(explorer, xml);
+  CU_ASSERT (ret == SXMLExplorerInterrupted);
+  sxml_destroy_explorer(explorer);
 }
 
 void test_check_event_on_content(void) {
-  SXMLParser* parser;
+  SXMLExplorer* explorer;
   char xml[] = "<?xml version=\"1.1\"?><tag>1 0<tag2>2</tag2>3</tag>";
   unsigned char ret;
 
@@ -51,20 +51,20 @@ void test_check_event_on_content(void) {
         break;
     }
     if (c==3) {
-      return SXMLParserStop;
+      return SXMLExplorerStop;
     }
-    return SXMLParserContinue;
+    return SXMLExplorerContinue;
   }
 
-  parser = sxml_init_parser();
-  sxml_register_func(parser, NULL, &on_content, NULL, NULL);
-  ret = sxml_run_parser(parser, xml);
-  CU_ASSERT (ret == SXMLParserInterrupted);
-  sxml_destroy_parser(parser);
+  explorer = sxml_make_explorer();
+  sxml_register_func(explorer, NULL, &on_content, NULL, NULL);
+  ret = sxml_run_explorer(explorer, xml);
+  CU_ASSERT (ret == SXMLExplorerInterrupted);
+  sxml_destroy_explorer(explorer);
 }
 
 void test_check_parsing_attribute(void) {
-  SXMLParser* parser;
+  SXMLExplorer* explorer;
   char xml[] = "<?xml version=\"1.1\"?><tag hoge=\"fuga\" no=\"</tag>\"><tag2 goe=\"ds\"   /></tag>";
   unsigned int c=0;
 
@@ -78,7 +78,7 @@ void test_check_parsing_attribute(void) {
     if (strcmp("goe", name) == 0 && c == 6) {
       c++;
     }
-    return SXMLParserContinue;
+    return SXMLExplorerContinue;
   }
 
   unsigned char on_attribute_value(char *name) {
@@ -91,7 +91,7 @@ void test_check_parsing_attribute(void) {
     if (strcmp("ds", name) == 0 && c == 7) {
       c++;
     }
-    return SXMLParserContinue;
+    return SXMLExplorerContinue;
   }
 
   unsigned char on_tag(char *name) {
@@ -104,15 +104,15 @@ void test_check_parsing_attribute(void) {
     if (strcmp("/tag", name) == 0 && c == 8) {
       c++;
     }
-    return SXMLParserContinue;
+    return SXMLExplorerContinue;
   }
 
-  parser = sxml_init_parser();
-  sxml_register_func(parser, on_tag, NULL, on_attribute_key, on_attribute_value);
-  sxml_run_parser(parser, xml);
+  explorer = sxml_make_explorer();
+  sxml_register_func(explorer, on_tag, NULL, on_attribute_key, on_attribute_value);
+  sxml_run_explorer(explorer, xml);
   CU_ASSERT(c == 9);
 
-  sxml_destroy_parser(parser);
+  sxml_destroy_explorer(explorer);
 }
 
 int main(void) {
@@ -122,7 +122,7 @@ int main(void) {
   suite = CU_add_suite("SparseXML", NULL, NULL);
   add_private_test(&suite);
   CU_add_test(suite, "Parse simple XML", test_parse_simple_xml);
-  CU_add_test(suite, "Check status in running parser", test_check_event_on_content);
+  CU_add_test(suite, "Check status in running explorer", test_check_event_on_content);
   CU_add_test(suite, "Check ", test_check_parsing_attribute );
   CU_basic_run_tests();
   CU_cleanup_registry();

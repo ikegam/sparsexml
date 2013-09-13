@@ -3,18 +3,18 @@
 
 #include "sparsexml-priv.h"
 
-void test_initialize_parser(void) {
-  SXMLParser* parser;
+void test_initialize_explorer(void) {
+  SXMLExplorer* explorer;
 
-  parser = sxml_init_parser();
-  CU_ASSERT (parser->state == INITIAL);
-  CU_ASSERT (parser->bp == 0);
-  CU_ASSERT (strlen(parser->buffer) == 0);
-  sxml_destroy_parser(parser);
+  explorer = sxml_make_explorer();
+  CU_ASSERT (explorer->state == INITIAL);
+  CU_ASSERT (explorer->bp == 0);
+  CU_ASSERT (strlen(explorer->buffer) == 0);
+  sxml_destroy_explorer(explorer);
 }
 
 void test_parse_separated_xml(void) {
-  SXMLParser* parser;
+  SXMLExplorer* explorer;
   char xml1[] = "<?xml versi";
   char xml2[] = "on=\"1.1\"?";
   char xml3[] = "><ta";
@@ -29,27 +29,27 @@ void test_parse_separated_xml(void) {
       c++;
     }
     if (c==2) {
-      return SXMLParserStop;
+      return SXMLExplorerStop;
     }
-    return SXMLParserContinue;
+    return SXMLExplorerContinue;
   }
 
-  parser = sxml_init_parser();
-  sxml_register_func(parser, &on_tag, NULL, NULL, NULL);
-  ret = sxml_run_parser(parser, xml1);
-  CU_ASSERT (parser->state == IN_HEADER);
-  ret = sxml_run_parser(parser, xml2);
-  CU_ASSERT (parser->state == IN_HEADER);
-  ret = sxml_run_parser(parser, xml3);
-  CU_ASSERT (parser->state == IN_TAG);
-  CU_ASSERT (strcmp(parser->buffer, "ta") == 0);
-  ret = sxml_run_parser(parser, xml4);
-  CU_ASSERT (parser->state == IN_CONTENT);
-  CU_ASSERT (ret == SXMLParserInterrupted);
-  sxml_destroy_parser(parser);
+  explorer = sxml_make_explorer();
+  sxml_register_func(explorer, &on_tag, NULL, NULL, NULL);
+  ret = sxml_run_explorer(explorer, xml1);
+  CU_ASSERT (explorer->state == IN_HEADER);
+  ret = sxml_run_explorer(explorer, xml2);
+  CU_ASSERT (explorer->state == IN_HEADER);
+  ret = sxml_run_explorer(explorer, xml3);
+  CU_ASSERT (explorer->state == IN_TAG);
+  CU_ASSERT (strcmp(explorer->buffer, "ta") == 0);
+  ret = sxml_run_explorer(explorer, xml4);
+  CU_ASSERT (explorer->state == IN_CONTENT);
+  CU_ASSERT (ret == SXMLExplorerInterrupted);
+  sxml_destroy_explorer(explorer);
 }
 
 void add_private_test(CU_pSuite* suite) {
-  CU_add_test(*suite, "initialize phase", test_initialize_parser);
+  CU_add_test(*suite, "initialize phase", test_initialize_explorer);
   CU_add_test(*suite, "Parse simple separated XML", test_parse_separated_xml);
 }

@@ -6,131 +6,131 @@
 
 #include "sparsexml-priv.h"
 
-unsigned char priv_sxml_change_parser_state(SXMLParser* parser, enum SXMLParserState state) {
-  unsigned char ret = SXMLParserContinue;
+unsigned char priv_sxml_change_explorer_state(SXMLExplorer* explorer, enum SXMLExplorerState state) {
+  unsigned char ret = SXMLExplorerContinue;
 
-  if (strlen(parser->buffer) > 0) {
-    if (parser->state == IN_TAG && state == IN_CONTENT && parser->tag_func != NULL) {
-      ret = parser->tag_func(parser->buffer);
-    } else if (parser->state == IN_TAG && state == IN_TAG && parser->tag_func != NULL) {
-      ret = parser->tag_func(parser->buffer);
-    } else if (parser->state == IN_TAG && state == IN_ATTRIBUTE_KEY && parser->tag_func != NULL) {
-      ret = parser->tag_func(parser->buffer);
-    } else if (parser->state == IN_CONTENT && state == IN_TAG && parser->content_func != NULL) {
-      ret = parser->content_func(parser->buffer);
-    } else if (parser->state == IN_ATTRIBUTE_KEY && state == IN_ATTRIBUTE_VALUE && parser->attribute_key_func != NULL) {
-      ret = parser->attribute_key_func(parser->buffer);
-    } else if (parser->state == IN_ATTRIBUTE_VALUE && state == IN_TAG && parser->attribute_value_func != NULL) {
-      ret = parser->attribute_value_func(parser->buffer);
+  if (strlen(explorer->buffer) > 0) {
+    if (explorer->state == IN_TAG && state == IN_CONTENT && explorer->tag_func != NULL) {
+      ret = explorer->tag_func(explorer->buffer);
+    } else if (explorer->state == IN_TAG && state == IN_TAG && explorer->tag_func != NULL) {
+      ret = explorer->tag_func(explorer->buffer);
+    } else if (explorer->state == IN_TAG && state == IN_ATTRIBUTE_KEY && explorer->tag_func != NULL) {
+      ret = explorer->tag_func(explorer->buffer);
+    } else if (explorer->state == IN_CONTENT && state == IN_TAG && explorer->content_func != NULL) {
+      ret = explorer->content_func(explorer->buffer);
+    } else if (explorer->state == IN_ATTRIBUTE_KEY && state == IN_ATTRIBUTE_VALUE && explorer->attribute_key_func != NULL) {
+      ret = explorer->attribute_key_func(explorer->buffer);
+    } else if (explorer->state == IN_ATTRIBUTE_VALUE && state == IN_TAG && explorer->attribute_value_func != NULL) {
+      ret = explorer->attribute_value_func(explorer->buffer);
     }
   }
 
-  parser->bp = 0;
-  parser->buffer[0] = '\0';
+  explorer->bp = 0;
+  explorer->buffer[0] = '\0';
 
-  parser->state = state;
+  explorer->state = state;
 
   return ret;
 }
 
-SXMLParser* sxml_init_parser(void) {
-  SXMLParser* parser;
-  parser = malloc(sizeof(SXMLParser));
+SXMLExplorer* sxml_make_explorer(void) {
+  SXMLExplorer* explorer;
+  explorer = malloc(sizeof(SXMLExplorer));
 
-  parser->state = INITIAL;
-  parser->bp = 0;
-  parser->buffer[0] = '\0';
-  parser->header_parsed = 0;
+  explorer->state = INITIAL;
+  explorer->bp = 0;
+  explorer->buffer[0] = '\0';
+  explorer->header_parsed = 0;
 
-  return parser;
+  return explorer;
 }
 
-void sxml_destroy_parser(SXMLParser *parser) {
-  free(parser);
+void sxml_destroy_explorer(SXMLExplorer *explorer) {
+  free(explorer);
 }
 
-void sxml_register_func(SXMLParser* parser, void* open, void* content, void* attribute_key, void* attribute_value) {
-  parser->tag_func = open;
-  parser->content_func = content;
-  parser->attribute_value_func = attribute_value;
-  parser->attribute_key_func = attribute_key;
+void sxml_register_func(SXMLExplorer* explorer, void* open, void* content, void* attribute_key, void* attribute_value) {
+  explorer->tag_func = open;
+  explorer->content_func = content;
+  explorer->attribute_value_func = attribute_value;
+  explorer->attribute_key_func = attribute_key;
 }
 
-unsigned char sxml_run_parser(SXMLParser* parser, char *xml) {
+unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
 
-  unsigned char result = SXMLParserContinue;
+  unsigned char result = SXMLExplorerContinue;
 
   do {
 
 #ifdef  __DEBUG1
-    printf("State:%d Buffer:%s CharAddr: %p Char:%c, result %d, length %d\r\n", parser->state, parser->buffer, xml, *xml, result, len);
+    printf("State:%d Buffer:%s CharAddr: %p Char:%c, result %d, length %d\r\n", explorer->state, explorer->buffer, xml, *xml, result, len);
 #endif
 
-    switch (parser->state) {
+    switch (explorer->state) {
       case INITIAL:
         switch (*xml) {
           case '<':
-            result = priv_sxml_change_parser_state(parser, INITIAL);
+            result = priv_sxml_change_explorer_state(explorer, INITIAL);
             continue;
           case '?':
-            result = priv_sxml_change_parser_state(parser, IN_HEADER);
+            result = priv_sxml_change_explorer_state(explorer, IN_HEADER);
             continue;
         }
         break;
       case IN_HEADER:
         switch (*xml) {
           case '>':
-            result = priv_sxml_change_parser_state(parser, IN_CONTENT);
+            result = priv_sxml_change_explorer_state(explorer, IN_CONTENT);
             continue;
         }
         break;
       case IN_TAG:
         switch (*xml) {
           case '>':
-            result =  priv_sxml_change_parser_state(parser, IN_CONTENT);
+            result =  priv_sxml_change_explorer_state(explorer, IN_CONTENT);
             continue;
           case ' ':
-            result = priv_sxml_change_parser_state(parser, IN_ATTRIBUTE_KEY);
+            result = priv_sxml_change_explorer_state(explorer, IN_ATTRIBUTE_KEY);
             continue;
         }
         break;
       case IN_ATTRIBUTE_KEY:
         switch (*xml) {
           case '>':
-            result = priv_sxml_change_parser_state(parser, IN_CONTENT);
+            result = priv_sxml_change_explorer_state(explorer, IN_CONTENT);
             continue;
           case '"':
-            assert(parser->bp > 1);
-            parser->bp--;
-            parser->buffer[parser->bp] = '\0';
-            result = priv_sxml_change_parser_state(parser, IN_ATTRIBUTE_VALUE);
+            assert(explorer->bp > 1);
+            explorer->bp--;
+            explorer->buffer[explorer->bp] = '\0';
+            result = priv_sxml_change_explorer_state(explorer, IN_ATTRIBUTE_VALUE);
             continue;
         }
       case IN_ATTRIBUTE_VALUE:
         switch (*xml) {
           case '"':
-            result = priv_sxml_change_parser_state(parser, IN_TAG);
+            result = priv_sxml_change_explorer_state(explorer, IN_TAG);
             continue;
         }
         break;
       case IN_CONTENT:
         switch (*xml) {
           case '<':
-            result = priv_sxml_change_parser_state(parser, IN_TAG);
+            result = priv_sxml_change_explorer_state(explorer, IN_TAG);
             continue;
         }
         break;
     }
-    parser->buffer[parser->bp++] = *xml;
-    parser->buffer[parser->bp] = '\0';
+    explorer->buffer[explorer->bp++] = *xml;
+    explorer->buffer[explorer->bp] = '\0';
 
-  } while ((*++xml != '\0') && (result == SXMLParserContinue));
+  } while ((*++xml != '\0') && (result == SXMLExplorerContinue));
 
-  if (result == SXMLParserStop) {
-    return SXMLParserInterrupted;
+  if (result == SXMLExplorerStop) {
+    return SXMLExplorerInterrupted;
   }
 
-  return SXMLParserComplete;
+  return SXMLExplorerComplete;
 
 }
 

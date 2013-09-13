@@ -1,9 +1,9 @@
-#ifndef __SXMLParserPRIV__
-#define __SXMLParserPRIV__
+#ifndef __SXMLExplorerPRIV__
+#define __SXMLExplorerPRIV__
 
 #include "sparsexml.h"
 
-enum SXMLParserState {
+enum SXMLExplorerState {
   INITIAL,
   IN_HEADER,
   IN_TAG,
@@ -12,8 +12,8 @@ enum SXMLParserState {
   IN_CONTENT
 };
 
-struct __SXMLParser {
-  enum SXMLParserState state;
+struct __SXMLExplorer {
+  enum SXMLExplorerState state;
 
   char buffer[SXMLElementLength];
   unsigned int bp;
@@ -25,6 +25,6 @@ struct __SXMLParser {
   unsigned char (*attribute_key_func)(char *);
 };
 
-unsigned char priv_sxml_change_parser_state(SXMLParser* parser, enum SXMLParserState state);
+unsigned char priv_sxml_change_explorer_state(SXMLExplorer* explorer, enum SXMLExplorerState state);
 
 #endif
