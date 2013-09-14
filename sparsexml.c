@@ -10,7 +10,7 @@ unsigned char priv_sxml_change_explorer_state(SXMLExplorer* explorer, enum SXMLE
   unsigned char ret = SXMLExplorerContinue;
 
   if (strlen(explorer->buffer) > 0) {
-    if (explorer->state == IN_TAG && state == IN_CONTENT && explorer->tag_func != NULL) {
+           if (explorer->state == IN_TAG && state == IN_CONTENT && explorer->tag_func != NULL) {
       ret = explorer->tag_func(explorer->buffer);
     } else if (explorer->state == IN_TAG && state == IN_TAG && explorer->tag_func != NULL) {
       ret = explorer->tag_func(explorer->buffer);
