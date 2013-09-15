@@ -13,7 +13,7 @@ typedef enum __SXMLExplorerWhereIs {
   ON_NORMAL,
   ON_DECLARATION,
   ON_COMMENT
-} SXMLExplorerWhereIs
+} SXMLExplorerWhereIs;
 
 typedef enum __SXMLExplorerState {
   INITIAL,
