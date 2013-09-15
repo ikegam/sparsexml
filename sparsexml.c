@@ -6,7 +6,7 @@
 
 #include "sparsexml-priv.h"
 
-unsigned char priv_sxml_change_explorer_state(SXMLExplorer* explorer, enum SXMLExplorerState state) {
+unsigned char priv_sxml_change_explorer_state(SXMLExplorer* explorer, SXMLExplorerState state) {
   unsigned char ret = SXMLExplorerContinue;
 
   if (strlen(explorer->buffer) > 0) {
@@ -31,6 +31,10 @@ unsigned char priv_sxml_change_explorer_state(SXMLExplorer* explorer, enum SXMLE
   explorer->state = state;
 
   return ret;
+}
+
+SXMLExplorerState sxml_check_explorer_state(SXMLExplorer* ex) {
+  return ex->state;
 }
 
 SXMLExplorer* sxml_make_explorer(void) {
@@ -69,17 +73,16 @@ unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
     switch (explorer->state) {
       case INITIAL:
         switch (*xml) {
-          case '<':
-            result = priv_sxml_change_explorer_state(explorer, INITIAL);
-            continue;
-          case '?':
-            result = priv_sxml_change_explorer_state(explorer, IN_HEADER);
-            continue;
+          default:
+            result = priv_sxml_change_explorer_state(explorer, IN_TAG);
         }
         break;
-      case IN_HEADER:
+      case IN_DECLARATION:
         switch (*xml) {
           case '>':
+            if (explorer->buffer[strlen(explorer->buffer)-1] != '?') {
+              break;
+            }
             result = priv_sxml_change_explorer_state(explorer, IN_CONTENT);
             continue;
         }
@@ -91,6 +94,12 @@ unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
             continue;
           case ' ':
             result = priv_sxml_change_explorer_state(explorer, IN_ATTRIBUTE_KEY);
+            continue;
+          case '?':
+            if (explorer->buffer[strlen(explorer->buffer)-1] != '<') {
+              break;
+            }
+            result =  priv_sxml_change_explorer_state(explorer, IN_DECLARATION);
             continue;
         }
         break;

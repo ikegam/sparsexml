@@ -3,17 +3,8 @@
 
 #include "sparsexml.h"
 
-enum SXMLExplorerState {
-  INITIAL,
-  IN_HEADER,
-  IN_TAG,
-  IN_ATTRIBUTE_KEY,
-  IN_ATTRIBUTE_VALUE,
-  IN_CONTENT
-};
-
 struct __SXMLExplorer {
-  enum SXMLExplorerState state;
+  SXMLExplorerState state;
 
   char buffer[SXMLElementLength];
   unsigned int bp;
@@ -25,6 +16,6 @@ struct __SXMLExplorer {
   unsigned char (*attribute_key_func)(char *);
 };
 
-unsigned char priv_sxml_change_explorer_state(SXMLExplorer* explorer, enum SXMLExplorerState state);
+unsigned char priv_sxml_change_explorer_state(SXMLExplorer* explorer, SXMLExplorerState state);
 
 #endif

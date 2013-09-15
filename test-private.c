@@ -37,9 +37,9 @@ void test_parse_separated_xml(void) {
   explorer = sxml_make_explorer();
   sxml_register_func(explorer, &on_tag, NULL, NULL, NULL);
   ret = sxml_run_explorer(explorer, xml1);
-  CU_ASSERT (explorer->state == IN_HEADER);
+  CU_ASSERT (explorer->state == IN_DECLARATION);
   ret = sxml_run_explorer(explorer, xml2);
-  CU_ASSERT (explorer->state == IN_HEADER);
+  CU_ASSERT (explorer->state == IN_DECLARATION);
   ret = sxml_run_explorer(explorer, xml3);
   CU_ASSERT (explorer->state == IN_TAG);
   CU_ASSERT (strcmp(explorer->buffer, "ta") == 0);

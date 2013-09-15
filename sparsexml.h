@@ -9,6 +9,21 @@
 
 #define SXMLElementLength 1024
 
+typedef enum __SXMLExplorerWhereIs {
+  ON_NORMAL,
+  ON_DECLARATION,
+  ON_COMMENT
+} SXMLExplorerWhereIs
+
+typedef enum __SXMLExplorerState {
+  INITIAL,
+  IN_DECLARATION,
+  IN_TAG,
+  IN_ATTRIBUTE_KEY,
+  IN_ATTRIBUTE_VALUE,
+  IN_CONTENT
+} SXMLExplorerState;
+
 typedef struct __SXMLExplorer SXMLExplorer;
 
 SXMLExplorer* sxml_make_explorer(void);
