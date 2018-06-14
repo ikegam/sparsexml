@@ -1,4 +1,4 @@
-# SparseXML: Simple, tiny and no-functional, but useful parser framework for XML
+# SparseXML: too Simple and non functional, but useful parser framework for XML
 
 ## Abstract
 SparseXML is not a XML parser library that is just a ``explorer'' for XML. For tiny computers suck as arduino(atmega328p), it is difficult to use commonly used parser library(e.g. libxml2) because of its tiny hardware resource. Therefore there are some tiny implementation. However they can not treat XML correctly. Almost all of them are partially developed it is not full implementation. Therefore the design principle of SparseXML is just explorer (similar to SAX). SparseXML simply reads XML and occurs event at each elements of XML.
