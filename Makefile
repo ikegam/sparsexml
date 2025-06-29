@@ -9,7 +9,13 @@ TEST_OBJ = $(TEST_SRC:.c=.o)
 
 EXAMPLES_SRC = examples/simple.c
 EXAMPLES_OBJ = $(EXAMPLES_SRC:.c=.o)
-BENCH_SRC = bench/bench.c bench/bench_large_mem.c bench/main.c
+BENCH_SRC = bench/bench.c \
+            bench/bench_large_mem.c \
+            bench/bench_deep_nesting.c \
+            bench/bench_many_attrs.c \
+            bench/bench_comments.c \
+            bench/bench_entities.c \
+            bench/main.c
 BENCH_OBJ = $(BENCH_SRC:.c=.o)
 
 all: test-sparsexml examples/simple bench/bench
@@ -28,6 +34,14 @@ bench/bench: $(OBJ) $(BENCH_OBJ)
 bench/bench.o: bench/bench.c
 	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
 bench/bench_large_mem.o: bench/bench_large_mem.c
+	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
+bench/bench_deep_nesting.o: bench/bench_deep_nesting.c
+	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
+bench/bench_many_attrs.o: bench/bench_many_attrs.c
+	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
+bench/bench_comments.o: bench/bench_comments.c
+	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
+bench/bench_entities.o: bench/bench_entities.c
 	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
 
 %.o: %.c
