@@ -236,21 +236,36 @@ void test_check_parsing_doctype(void) {
 }
 
 int main(void) {
-  CU_pSuite suite;
+  CU_pSuite core_suite, internal_suite, advanced_suite, entity_suite, realworld_suite;
   CU_initialize_registry();
 
-  suite = CU_add_suite("SparseXML", NULL, NULL);
-  add_private_test(&suite);
-  CU_add_test(suite, "Parse simple XML", test_parse_simple_xml);
-  CU_add_test(suite, "Check status in running explorer", test_check_event_on_content);
-  CU_add_test(suite, "Check parsing attribute", test_check_parsing_attribute);
-  CU_add_test(suite, "Check XML comment parsing", test_check_parsing_comments);
-  CU_add_test(suite, "Check CDATA section parsing", test_check_parsing_cdata);
-  CU_add_test(suite, "Check entity reference parsing", test_check_parsing_entities);
-  CU_add_test(suite, "Check namespace parsing", test_check_parsing_namespaces);
-  CU_add_test(suite, "Check DOCTYPE parsing", test_check_parsing_doctype);
-  add_oss_xml_tests(&suite);
-  add_entity_tests(&suite);
+  // Core API and Basic Parsing Suite
+  core_suite = CU_add_suite("Core API & Basic Parsing", NULL, NULL);
+  CU_add_test(core_suite, "Parse simple XML", test_parse_simple_xml);
+  CU_add_test(core_suite, "Check status in running explorer", test_check_event_on_content);
+  CU_add_test(core_suite, "Check parsing attribute", test_check_parsing_attribute);
+
+  // Internal Implementation Suite
+  internal_suite = CU_add_suite("Internal Implementation", NULL, NULL);
+  add_private_test(&internal_suite);
+
+  // Advanced XML Features Suite
+  advanced_suite = CU_add_suite("Advanced XML Features", NULL, NULL);
+  CU_add_test(advanced_suite, "Check XML comment parsing", test_check_parsing_comments);
+  CU_add_test(advanced_suite, "Check CDATA section parsing", test_check_parsing_cdata);
+  CU_add_test(advanced_suite, "Check entity reference parsing", test_check_parsing_entities);
+  CU_add_test(advanced_suite, "Check namespace parsing", test_check_parsing_namespaces);
+  CU_add_test(advanced_suite, "Check DOCTYPE parsing", test_check_parsing_doctype);
+
+  // Entity Processing Suite
+  entity_suite = CU_add_suite("Entity Processing", NULL, NULL);
+  add_entity_tests(&entity_suite);
+
+  // Real-world XML Suite
+  realworld_suite = CU_add_suite("Real-world XML Samples", NULL, NULL);
+  add_oss_xml_tests(&realworld_suite);
+
+  CU_basic_set_mode(CU_BRM_VERBOSE);
   CU_basic_run_tests();
   CU_cleanup_registry();
 
