@@ -18,6 +18,20 @@ static unsigned int expat_tag_count;
 static unsigned int expat_content_count;
 static unsigned int expat_attr_count;
 
+static size_t current_rss_kb(void){
+    FILE *f = fopen("/proc/self/status", "r");
+    if(!f) return 0;
+    char line[256];
+    size_t rss = 0;
+    while(fgets(line, sizeof(line), f)){
+        if(strncmp(line, "VmRSS:", 6) == 0){
+            sscanf(line + 6, "%zu", &rss);
+            break;
+        }
+    }
+    fclose(f);
+    return rss;
+}
 
 static void reset_counters(void){
     tag_count = 0;
@@ -119,6 +133,10 @@ void bench_sparsexml(int iterations, size_t *avg_mem, size_t *max_mem){
     size_t maximum = used;
     for(int i=0;i<iterations;i++){
         sxml_run_explorer(ex,(char*)xml);
+        size_t rss = current_rss_kb();
+        total += rss;
+        if(rss > maximum)
+            maximum = rss;
     }
     sxml_destroy_explorer(ex);
     if(avg_mem) *avg_mem = total / iterations;
@@ -139,6 +157,10 @@ void bench_expat(int iterations, size_t *avg_mem, size_t *max_mem){
         total += used;
         XML_Parse(p, xml, strlen(xml), XML_TRUE);
         XML_ParserFree(p);
+        size_t rss = current_rss_kb();
+        total += rss;
+        if(rss > maximum)
+            maximum = rss;
     }
     if(avg_mem) *avg_mem = total / iterations;
     if(max_mem) *max_mem = maximum;
