@@ -61,7 +61,8 @@ int main(int argc,char **argv)
     build_xml(&xml, depth);
     size_t sxml = mem_usage_sparsexml(xml);
     size_t expat = mem_usage_expat(xml);
-    printf("deep_nesting\t%d\t%zu\t%zu\t0\t0\n", depth, sxml, expat);
+    printf("%-12s | %8d | %18zu | %14zu | %16.6f | %16.6f\n",
+           "deep_nesting", depth, sxml, expat, 0.0, 0.0);
     free(xml);
     return 0;
 }
