@@ -154,6 +154,9 @@ int main(int argc, char **argv)
     run_test();
     run_expat_test();
 
+    /* Print table header once */
+    printf("Benchmark\tParam\tSparseXML(bytes)\tExpat(bytes)\tSparse time(s)\tExpat time(s)\n");
+
     clock_t start, end;
     size_t sparse_avg = 0, sparse_max = 0;
     start = clock();
@@ -167,11 +170,10 @@ int main(int argc, char **argv)
     end = clock();
     double expat_time = (double)(end - start) / CLOCKS_PER_SEC;
 
-    printf("SparseXML: %f seconds for %d iterations\n", sparse_time, iter);
-    printf("  Avg memory: %zu bytes\n", sparse_avg);
-    printf("  Max memory: %zu bytes\n", sparse_max);
-    printf("Expat:     %f seconds for %d iterations\n", expat_time, iter);
-    printf("  Avg memory: %zu bytes\n", expat_avg);
-    printf("  Max memory: %zu bytes\n", expat_max);
+    /* Print as a single table row using tab separators */
+    printf("basic\t%d\t%zu\t%zu\t%f\t%f\n",
+           iter, sparse_avg, expat_avg, sparse_time, expat_time);
+    (void)sparse_max; /* keep variables unused in case future metrics needed */
+    (void)expat_max;
     return 0;
 }

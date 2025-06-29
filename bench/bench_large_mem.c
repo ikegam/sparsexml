@@ -61,9 +61,8 @@ int main(int argc,char **argv)
     build_xml(&xml, repeat);
     size_t sxml = mem_usage_sparsexml(xml);
     size_t expat = mem_usage_expat(xml);
-    printf("Large XML with %d children\n", repeat);
-    printf("SparseXML memory: %zu bytes\n", sxml);
-    printf("Expat memory: %zu bytes\n", expat);
+    /* Single table row */
+    printf("large_mem\t%d\t%zu\t%zu\t0\t0\n", repeat, sxml, expat);
     free(xml);
     return 0;
 }

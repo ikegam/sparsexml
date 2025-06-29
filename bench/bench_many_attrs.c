@@ -61,9 +61,7 @@ int main(int argc,char **argv)
     build_xml(&xml, count);
     size_t sxml = mem_usage_sparsexml(xml);
     size_t expat = mem_usage_expat(xml);
-    printf("Many attributes with count %d\n", count);
-    printf("SparseXML memory: %zu bytes\n", sxml);
-    printf("Expat memory: %zu bytes\n", expat);
+    printf("many_attrs\t%d\t%zu\t%zu\t0\t0\n", count, sxml, expat);
     free(xml);
     return 0;
 }
