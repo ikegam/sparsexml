@@ -115,6 +115,51 @@ void test_check_parsing_attribute(void) {
   sxml_destroy_explorer(explorer);
 }
 
+void test_check_parsing_comments(void) {
+  SXMLExplorer* explorer;
+  char xml[] = "<?xml version=\"1.0\"?><!-- First comment --><root>content<!-- Second comment --></root>";
+  unsigned int comment_count = 0;
+  
+  unsigned char on_comment(char *comment) {
+    comment_count++;
+    if (comment_count == 1) {
+      CU_ASSERT(strcmp(comment, " First comment ") == 0);
+    } else if (comment_count == 2) {
+      CU_ASSERT(strcmp(comment, " Second comment ") == 0);
+    }
+    return SXMLExplorerContinue;
+  }
+  
+  explorer = sxml_make_explorer();
+  sxml_register_func(explorer, NULL, NULL, NULL, NULL);
+  sxml_register_comment_func(explorer, on_comment);
+  sxml_run_explorer(explorer, xml);
+  
+  CU_ASSERT(comment_count == 2);
+  sxml_destroy_explorer(explorer);
+}
+
+void test_check_parsing_cdata(void) {
+  SXMLExplorer* explorer;
+  char xml[] = "<?xml version=\"1.0\"?><root><![CDATA[<tag>content & special chars</tag>]]></root>";
+  unsigned int content_count = 0;
+  
+  unsigned char on_content(char *content) {
+    content_count++;
+    if (content_count == 1) {
+      CU_ASSERT(strcmp(content, "<tag>content & special chars</tag>") == 0);
+    }
+    return SXMLExplorerContinue;
+  }
+  
+  explorer = sxml_make_explorer();
+  sxml_register_func(explorer, NULL, on_content, NULL, NULL);
+  sxml_run_explorer(explorer, xml);
+  
+  CU_ASSERT(content_count == 1);
+  sxml_destroy_explorer(explorer);
+}
+
 int main(void) {
   CU_pSuite suite;
   CU_initialize_registry();
@@ -123,7 +168,9 @@ int main(void) {
   add_private_test(&suite);
   CU_add_test(suite, "Parse simple XML", test_parse_simple_xml);
   CU_add_test(suite, "Check status in running explorer", test_check_event_on_content);
-  CU_add_test(suite, "Check ", test_check_parsing_attribute );
+  CU_add_test(suite, "Check parsing attribute", test_check_parsing_attribute);
+  CU_add_test(suite, "Check XML comment parsing", test_check_parsing_comments);
+  CU_add_test(suite, "Check CDATA section parsing", test_check_parsing_cdata);
   CU_basic_run_tests();
   CU_cleanup_registry();
 

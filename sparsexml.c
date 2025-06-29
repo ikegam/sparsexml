@@ -24,6 +24,8 @@ unsigned char priv_sxml_change_explorer_state(SXMLExplorer* explorer, SXMLExplor
       ret = explorer->attribute_value_func(explorer->buffer);
     } else if (explorer->state == IN_COMMENT && state == IN_CONTENT && explorer->comment_func != NULL) {
       ret = explorer->comment_func(explorer->buffer);
+    } else if (explorer->state == IN_CDATA && state == IN_CONTENT && explorer->content_func != NULL) {
+      ret = explorer->content_func(explorer->buffer);
     }
   }
 
