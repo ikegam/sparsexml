@@ -10,6 +10,7 @@ int bench_entities_main(int argc, char **argv);
 
 int main(int argc, char **argv){
     (void)argc; (void)argv;
+
     bench_basic_main(argc, argv);
     bench_large_main(argc, argv);
     bench_deep_main(argc, argv);
