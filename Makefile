@@ -15,6 +15,7 @@ BENCH_SRC = bench/bench.c \
             bench/bench_many_attrs.c \
             bench/bench_comments.c \
             bench/bench_entities.c \
+            bench/tinyxml_stub.c \
             bench/main.c
 BENCH_OBJ = $(BENCH_SRC:.c=.o)
 

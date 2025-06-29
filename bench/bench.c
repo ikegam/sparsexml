@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <malloc.h>
 #include "sparsexml.h"
+#include "tinyxml_stub.h"
 
 static const char xml[] = "<?xml version=\"1.0\"?><root attr=\"value\">text<child>child</child></root>";
 
@@ -141,6 +142,21 @@ void bench_expat(int iterations, size_t *avg_mem, size_t *max_mem){
     if(max_mem) *max_mem = maximum;
 }
 
+void bench_tinyxml(int iterations, size_t *avg_mem, size_t *max_mem){
+    size_t total = 0;
+    size_t maximum = 0;
+    for(int i=0;i<iterations;i++){
+        TinyXMLDoc *doc = tinyxml_load_string(xml);
+        size_t used = tinyxml_mem_usage(doc);
+        if(used > maximum)
+            maximum = used;
+        total += used;
+        tinyxml_free(doc);
+    }
+    if(avg_mem) *avg_mem = total / iterations;
+    if(max_mem) *max_mem = maximum;
+}
+
 #ifdef BENCH_LIBRARY
 int bench_basic_main(int argc, char **argv)
 #else
@@ -155,9 +171,10 @@ int main(int argc, char **argv)
     run_expat_test();
 
     /* Print table header once with aligned columns */
-    printf("%-12s | %-8s | %-18s | %-14s | %-16s | %-16s\n",
+    printf("%-12s | %-8s | %-18s | %-14s | %-14s | %-16s | %-16s | %-16s\n",
            "Benchmark", "Param", "SparseXML(bytes)",
-           "Expat(bytes)", "Sparse time(s)", "Expat time(s)");
+           "Expat(bytes)", "TinyXML(bytes)",
+           "Sparse time(s)", "Expat time(s)", "Tiny time(s)");
 
     clock_t start, end;
     size_t sparse_avg = 0, sparse_max = 0;
@@ -172,10 +189,18 @@ int main(int argc, char **argv)
     end = clock();
     double expat_time = (double)(end - start) / CLOCKS_PER_SEC;
 
+    size_t tiny_avg = 0, tiny_max = 0;
+    start = clock();
+    bench_tinyxml(iter, &tiny_avg, &tiny_max);
+    end = clock();
+    double tiny_time = (double)(end - start) / CLOCKS_PER_SEC;
+
     /* Print as a single table row matching the header format */
-    printf("%-12s | %8d | %18zu | %14zu | %16.6f | %16.6f\n",
-           "basic", iter, sparse_avg, expat_avg, sparse_time, expat_time);
+    printf("%-12s | %8d | %18zu | %14zu | %14zu | %16.6f | %16.6f | %16.6f\n",
+           "basic", iter, sparse_avg, expat_avg, tiny_avg,
+           sparse_time, expat_time, tiny_time);
     (void)sparse_max; /* keep variables unused in case future metrics needed */
     (void)expat_max;
+    (void)tiny_max;
     return 0;
 }

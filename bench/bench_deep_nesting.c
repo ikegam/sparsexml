@@ -3,6 +3,7 @@
 #include <expat.h>
 #include <malloc.h>
 #include "sparsexml.h"
+#include "tinyxml_stub.h"
 
 static unsigned char tag_cb(char* t){ return SXMLExplorerContinue; }
 static unsigned char content_cb(char* c){ return SXMLExplorerContinue; }
@@ -49,6 +50,13 @@ static size_t mem_usage_expat(char* xml){
     return used;
 }
 
+static size_t mem_usage_tinyxml(char* xml){
+    TinyXMLDoc *doc = tinyxml_load_string(xml);
+    size_t used = tinyxml_mem_usage(doc);
+    tinyxml_free(doc);
+    return used;
+}
+
 #ifdef BENCH_LIBRARY
 int bench_deep_main(int argc,char **argv)
 #else
@@ -61,8 +69,9 @@ int main(int argc,char **argv)
     build_xml(&xml, depth);
     size_t sxml = mem_usage_sparsexml(xml);
     size_t expat = mem_usage_expat(xml);
-    printf("%-12s | %8d | %18zu | %14zu | %16.6f | %16.6f\n",
-           "deep_nesting", depth, sxml, expat, 0.0, 0.0);
+    size_t tiny = mem_usage_tinyxml(xml);
+    printf("%-12s | %8d | %18zu | %14zu | %14zu | %16.6f | %16.6f | %16.6f\n",
+           "deep_nesting", depth, sxml, expat, tiny, 0.0, 0.0, 0.0);
     free(xml);
     return 0;
 }
