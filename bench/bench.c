@@ -164,8 +164,11 @@ int main(int argc, char **argv)
 #endif
 {
     int iter = 100000;
-    if(argc > 1)
+    if(argc > 1){
         iter = atoi(argv[1]);
+        if(iter <= 0)
+            iter = 100000;
+    }
 
     run_test();
     run_expat_test();
