@@ -146,7 +146,7 @@ void test_complex_xml_with_cdata_and_entities(void) {
                "      \"quotes\" and 'apostrophes'\n"
                "    ]]>\n"
                "  </data>\n"
-               "  <footer>&copy; 2024 &amp; beyond</footer>\n"
+               "  <footer>Copyright 2024 &amp; beyond</footer>\n"
                "</root>";
   
   unsigned int tag_count = 0;
@@ -188,16 +188,14 @@ void test_complex_xml_with_cdata_and_entities(void) {
   
   unsigned char result = sxml_run_explorer(explorer, xml);
   
-  // Accept various completion states for complex XML
-  CU_ASSERT(result == SXMLExplorerComplete || 
-            result == SXMLExplorerErrorInvalidEntity ||
-            result == SXMLExplorerInterrupted);
-  CU_ASSERT(tag_count >= 3);  // Some tags parsed
-  CU_ASSERT(content_count >= 1);  // Some content sections
-  CU_ASSERT(comment_count >= 0);  // Comments may be processed
-  CU_ASSERT(found_cdata >= 0);  // CDATA may be processed
-  CU_ASSERT(found_entities >= 0);  // Entities may be processed
-  CU_ASSERT(found_namespaces >= 0);  // Namespaces may be processed
+  // Should complete successfully with supported entities only
+  CU_ASSERT(result == SXMLExplorerComplete);
+  CU_ASSERT(tag_count >= 6);  // Should parse multiple tags (root, config, app:setting, description, data, footer)
+  CU_ASSERT(content_count >= 3);  // Should parse multiple content sections
+  CU_ASSERT(comment_count == 1);  // Should find the comment
+  CU_ASSERT(found_cdata == 1);  // Should process CDATA section
+  CU_ASSERT(found_entities == 1);  // Should find content (entities processed)
+  CU_ASSERT(found_namespaces == 1);  // Should process namespaces
   
   sxml_destroy_explorer(explorer);
 }
