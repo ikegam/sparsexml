@@ -21,7 +21,9 @@ typedef enum __SXMLExplorerState {
   IN_TAG,
   IN_ATTRIBUTE_KEY,
   IN_ATTRIBUTE_VALUE,
-  IN_CONTENT
+  IN_CONTENT,
+  IN_COMMENT,
+  IN_CDATA
 } SXMLExplorerState;
 
 typedef struct __SXMLExplorer SXMLExplorer;
@@ -29,6 +31,7 @@ typedef struct __SXMLExplorer SXMLExplorer;
 SXMLExplorer* sxml_make_explorer(void);
 void sxml_destroy_explorer(SXMLExplorer*);
 void sxml_register_func(SXMLExplorer*, void*, void*, void*, void*);
+void sxml_register_comment_func(SXMLExplorer*, void*);
 
 unsigned char sxml_run_explorer(SXMLExplorer*, char*);
 

@@ -22,6 +22,8 @@ unsigned char priv_sxml_change_explorer_state(SXMLExplorer* explorer, SXMLExplor
       ret = explorer->attribute_key_func(explorer->buffer);
     } else if (explorer->state == IN_ATTRIBUTE_VALUE && state == IN_TAG && explorer->attribute_value_func != NULL) {
       ret = explorer->attribute_value_func(explorer->buffer);
+    } else if (explorer->state == IN_COMMENT && state == IN_CONTENT && explorer->comment_func != NULL) {
+      ret = explorer->comment_func(explorer->buffer);
     }
   }
 
@@ -45,6 +47,9 @@ SXMLExplorer* sxml_make_explorer(void) {
   explorer->bp = 0;
   explorer->buffer[0] = '\0';
   explorer->header_parsed = 0;
+  explorer->comment_depth = 0;
+  explorer->cdata_pos = 0;
+  explorer->comment_func = NULL;
 
   return explorer;
 }
@@ -58,6 +63,10 @@ void sxml_register_func(SXMLExplorer* explorer, void* open, void* content, void*
   explorer->content_func = content;
   explorer->attribute_value_func = attribute_value;
   explorer->attribute_key_func = attribute_key;
+}
+
+void sxml_register_comment_func(SXMLExplorer* explorer, void* comment) {
+  explorer->comment_func = comment;
 }
 
 unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
@@ -115,6 +124,7 @@ unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
             result = priv_sxml_change_explorer_state(explorer, IN_ATTRIBUTE_VALUE);
             continue;
         }
+        break;
       case IN_ATTRIBUTE_VALUE:
         switch (*xml) {
           case '"':
@@ -125,13 +135,47 @@ unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
       case IN_CONTENT:
         switch (*xml) {
           case '<':
+            // Check for comment start: <!--
+            if (*(xml+1) == '!' && *(xml+2) == '-' && *(xml+3) == '-') {
+              result = priv_sxml_change_explorer_state(explorer, IN_COMMENT);
+              xml += 3; // Skip '!--'
+              continue;
+            }
+            // Check for CDATA start: <![CDATA[
+            if (*(xml+1) == '!' && *(xml+2) == '[' && 
+                strncmp(xml+3, "CDATA[", 6) == 0) {
+              result = priv_sxml_change_explorer_state(explorer, IN_CDATA);
+              xml += 8; // Skip '![CDATA['
+              continue;
+            }
             result = priv_sxml_change_explorer_state(explorer, IN_TAG);
             continue;
         }
         break;
+      case IN_COMMENT:
+        // Look for comment end: -->
+        if (*xml == '-' && *(xml+1) == '-' && *(xml+2) == '>') {
+          result = priv_sxml_change_explorer_state(explorer, IN_CONTENT);
+          xml += 2; // Skip '-->', the '>' will be processed in next iteration
+          continue;
+        }
+        break;
+      case IN_CDATA:
+        // Look for CDATA end: ]]>
+        if (*xml == ']' && *(xml+1) == ']' && *(xml+2) == '>') {
+          result = priv_sxml_change_explorer_state(explorer, IN_CONTENT);
+          xml += 2; // Skip ']]>', the '>' will be processed in next iteration
+          continue;
+        }
+        break;
     }
-    explorer->buffer[explorer->bp++] = *xml;
-    explorer->buffer[explorer->bp] = '\0';
+    if (explorer->bp < SXMLElementLength - 1) {
+      explorer->buffer[explorer->bp++] = *xml;
+      explorer->buffer[explorer->bp] = '\0';
+    } else {
+      // Buffer overflow prevention - truncate
+      explorer->buffer[SXMLElementLength - 1] = '\0';
+    }
 
   } while ((*++xml != '\0') && (result == SXMLExplorerContinue));
 
