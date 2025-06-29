@@ -117,7 +117,15 @@ make
 - Embedded web service responses
 
 ## License
-[Add your license information here]
+This project is licensed under the BSD 4-Clause License - see the [LICENSE](LICENSE) file for details.
+
+### License Summary
+- ✅ Commercial use allowed
+- ✅ Distribution allowed  
+- ✅ Modification allowed
+- ✅ Private use allowed
+- ⚠️ Advertising clause: Must acknowledge SparseXML Project in advertising materials
+- ❌ No liability or warranty provided
 
 ## Future Enhancements
 Potential improvements for future versions:
