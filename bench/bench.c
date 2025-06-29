@@ -141,7 +141,12 @@ void bench_expat(int iterations, size_t *avg_mem, size_t *max_mem){
     if(max_mem) *max_mem = maximum;
 }
 
-int main(int argc, char **argv){
+#ifdef BENCH_LIBRARY
+int bench_basic_main(int argc, char **argv)
+#else
+int main(int argc, char **argv)
+#endif
+{
     int iter = 100000;
     if(argc > 1)
         iter = atoi(argv[1]);

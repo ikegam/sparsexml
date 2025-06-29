@@ -50,10 +50,10 @@ SparseXMLは1KB固定バッファを採用しており、その他のヒープ�
 SparseXMLはメモリフットプリントが小さいだけでなく、シンプルな実装によって高速に動作することが分かる。ただし、XML仕様への対応範囲は限定されるため、複雑な機能が必要な場合はlibexpatなどを選択すべきである。
 
 ### 4.4 追加テスト
-`examples/bench` にはベンチマークだけでなく簡単な検証用テストも備えている。XMLを1回だけ解析し、タグ数や属性数を確認した後にベンチマークを実行する形式だ。実行例を次に示す。
+`bench/bench` にはベンチマークだけでなく簡単な検証用テストも備えている。XMLを1回だけ解析し、タグ数や属性数を確認した後にベンチマークを実行する形式だ。実行例を次に示す。
 
 ```
-$ ./examples/bench 1000
+$ ./bench/bench basic 1000
 [TEST] counters ok (tags=4, contents=2, attrs=1)
 SparseXML: 0.05 seconds for 1000 iterations
 Expat:     0.30 seconds for 1000 iterations

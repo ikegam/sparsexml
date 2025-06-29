@@ -49,7 +49,12 @@ static size_t mem_usage_expat(char* xml){
     return used;
 }
 
-int main(int argc,char** argv){
+#ifdef BENCH_LIBRARY
+int bench_large_main(int argc,char **argv)
+#else
+int main(int argc,char **argv)
+#endif
+{
     int repeat = 1000;
     if(argc>1) repeat = atoi(argv[1]);
     char* xml = NULL;
