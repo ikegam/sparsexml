@@ -5,7 +5,7 @@ all: test-sparsexml
 test: test-sparsexml
 	./$<
 
-test-sparsexml: sparsexml.o test.o test-private.o test-oss-xml.o
+test-sparsexml: sparsexml.o test.o test-private.o test-oss-xml.o test-entities.o
 	$(CC) $(CFLAGS) -o $@ $^ -lcunit
 
 .c.o:

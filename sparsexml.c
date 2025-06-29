@@ -59,8 +59,13 @@ SXMLExplorer* sxml_make_explorer(void) {
   explorer->cdata_pos = 0;
   explorer->comment_func = NULL;
   explorer->prev_state = INITIAL;
+  explorer->entity_bp = 0;
+  explorer->entity_buffer[0] = '\0';
+  explorer->saved_bp = 0;
   explorer->enable_entity_processing = 0;
   explorer->enable_namespace_processing = 0;
+  explorer->enable_extended_entities = 0;
+  explorer->enable_numeric_entities = 0;
 
   return explorer;
 }
@@ -88,9 +93,18 @@ void sxml_enable_namespace_processing(SXMLExplorer* explorer, unsigned char enab
   explorer->enable_namespace_processing = enable;
 }
 
+void sxml_enable_extended_entities(SXMLExplorer* explorer, unsigned char enable) {
+  explorer->enable_extended_entities = enable;
+}
+
+void sxml_enable_numeric_entities(SXMLExplorer* explorer, unsigned char enable) {
+  explorer->enable_numeric_entities = enable;
+}
+
 unsigned char priv_sxml_process_entity(SXMLExplorer* explorer, char* entity_buffer) {
   char replacement = '\0';
   
+  // First try standard XML entities
   if (strcmp(entity_buffer, "lt") == 0) {
     replacement = '<';
   } else if (strcmp(entity_buffer, "gt") == 0) {
@@ -102,6 +116,14 @@ unsigned char priv_sxml_process_entity(SXMLExplorer* explorer, char* entity_buff
   } else if (strcmp(entity_buffer, "apos") == 0) {
     replacement = '\'';
   } else {
+    // Try numeric entities if enabled
+    if (explorer->enable_numeric_entities && (entity_buffer[0] == '#')) {
+      return priv_sxml_process_numeric_entity(explorer, entity_buffer);
+    }
+    // Try extended entities if enabled
+    if (explorer->enable_extended_entities) {
+      return priv_sxml_process_extended_entity(explorer, entity_buffer);
+    }
     return SXMLExplorerErrorInvalidEntity;
   }
   
@@ -110,6 +132,90 @@ unsigned char priv_sxml_process_entity(SXMLExplorer* explorer, char* entity_buff
     explorer->buffer[explorer->bp] = '\0';
   } else {
     return SXMLExplorerErrorBufferOverflow;
+  }
+  
+  return SXMLExplorerContinue;
+}
+
+unsigned char priv_sxml_process_numeric_entity(SXMLExplorer* explorer, char* entity_buffer) {
+  unsigned int codepoint = 0;
+  char* end_ptr;
+  
+  if (entity_buffer[1] == 'x' || entity_buffer[1] == 'X') {
+    // Hexadecimal: &#xAB; or &#XAB;
+    codepoint = strtoul(entity_buffer + 2, &end_ptr, 16);
+  } else {
+    // Decimal: &#123;
+    codepoint = strtoul(entity_buffer + 1, &end_ptr, 10);
+  }
+  
+  // Basic ASCII range check for embedded systems
+  if (codepoint == 0 || codepoint > 127) {
+    return SXMLExplorerErrorInvalidEntity;
+  }
+  
+  if (explorer->bp < SXMLElementLength - 1) {
+    explorer->buffer[explorer->bp++] = (char)codepoint;
+    explorer->buffer[explorer->bp] = '\0';
+  } else {
+    return SXMLExplorerErrorBufferOverflow;
+  }
+  
+  return SXMLExplorerContinue;
+}
+
+unsigned char priv_sxml_process_extended_entity(SXMLExplorer* explorer, char* entity_buffer) {
+  // Common HTML entities (keeping it minimal for embedded systems)
+  char replacement = '\0';
+  
+  if (strcmp(entity_buffer, "nbsp") == 0) {
+    replacement = ' ';  // Non-breaking space -> regular space
+  } else if (strcmp(entity_buffer, "copy") == 0) {
+    // For embedded systems, replace with simple text
+    const char* copyright_text = "(c)";
+    int len = strlen(copyright_text);
+    if (explorer->bp + len < SXMLElementLength) {
+      strcpy(explorer->buffer + explorer->bp, copyright_text);
+      explorer->bp += len;
+      return SXMLExplorerContinue;
+    } else {
+      return SXMLExplorerErrorBufferOverflow;
+    }
+  } else if (strcmp(entity_buffer, "reg") == 0) {
+    const char* reg_text = "(R)";
+    int len = strlen(reg_text);
+    if (explorer->bp + len < SXMLElementLength) {
+      strcpy(explorer->buffer + explorer->bp, reg_text);
+      explorer->bp += len;
+      return SXMLExplorerContinue;
+    } else {
+      return SXMLExplorerErrorBufferOverflow;
+    }
+  } else if (strcmp(entity_buffer, "trade") == 0) {
+    const char* trade_text = "(TM)";
+    int len = strlen(trade_text);
+    if (explorer->bp + len < SXMLElementLength) {
+      strcpy(explorer->buffer + explorer->bp, trade_text);
+      explorer->bp += len;
+      return SXMLExplorerContinue;
+    } else {
+      return SXMLExplorerErrorBufferOverflow;
+    }
+  } else if (strcmp(entity_buffer, "euro") == 0) {
+    replacement = 'E';  // Euro symbol -> E for ASCII compatibility
+  } else if (strcmp(entity_buffer, "pound") == 0) {
+    replacement = '#';  // Pound symbol -> # for ASCII compatibility
+  } else {
+    return SXMLExplorerErrorInvalidEntity;
+  }
+  
+  if (replacement != '\0') {
+    if (explorer->bp < SXMLElementLength - 1) {
+      explorer->buffer[explorer->bp++] = replacement;
+      explorer->buffer[explorer->bp] = '\0';
+    } else {
+      return SXMLExplorerErrorBufferOverflow;
+    }
   }
   
   return SXMLExplorerContinue;
@@ -192,8 +298,8 @@ unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
             if (explorer->enable_entity_processing) {
               explorer->prev_state = explorer->state;
               explorer->state = IN_ENTITY;
-              explorer->bp = 0;
-              explorer->buffer[0] = '\0';
+              explorer->entity_bp = 0;
+              explorer->entity_buffer[0] = '\0';
               continue;
             }
             break;
@@ -227,8 +333,8 @@ unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
             if (explorer->enable_entity_processing) {
               explorer->prev_state = explorer->state;
               explorer->state = IN_ENTITY;
-              explorer->bp = 0;
-              explorer->buffer[0] = '\0';
+              explorer->entity_bp = 0;
+              explorer->entity_buffer[0] = '\0';
               continue;
             }
             break;
@@ -253,18 +359,21 @@ unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
       case IN_ENTITY:
         if (*xml == ';') {
           // Process entity reference
-          char entity_buffer[32];
-          if (explorer->bp < sizeof(entity_buffer) - 1) {
-            strncpy(entity_buffer, explorer->buffer, explorer->bp);
-            entity_buffer[explorer->bp] = '\0';
-            explorer->bp = 0;
-            explorer->buffer[0] = '\0';
-            result = priv_sxml_process_entity(explorer, entity_buffer);
+          if (explorer->entity_bp < sizeof(explorer->entity_buffer) - 1) {
+            explorer->entity_buffer[explorer->entity_bp] = '\0';
+            result = priv_sxml_process_entity(explorer, explorer->entity_buffer);
             if (result != SXMLExplorerContinue) {
               return result;
             }
             explorer->state = explorer->prev_state;
             continue;
+          } else {
+            return SXMLExplorerErrorInvalidEntity;
+          }
+        } else {
+          // Collect entity characters in entity buffer
+          if (explorer->entity_bp < sizeof(explorer->entity_buffer) - 1) {
+            explorer->entity_buffer[explorer->entity_bp++] = *xml;
           } else {
             return SXMLExplorerErrorInvalidEntity;
           }
@@ -277,9 +386,9 @@ unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
         }
         break;
     }
-    // Add character to buffer unless we're in an entity state and it's an entity delimiter
-    if (explorer->state == IN_ENTITY && (*xml == '&' || *xml == ';')) {
-      // Skip entity delimiters
+    // Add character to buffer unless we're in an entity state
+    if (explorer->state == IN_ENTITY) {
+      // Entity characters are handled in the IN_ENTITY case above
     } else {
       if (explorer->bp < SXMLElementLength - 1) {
         explorer->buffer[explorer->bp++] = *xml;

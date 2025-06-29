@@ -39,6 +39,8 @@ void sxml_register_func(SXMLExplorer*, void*, void*, void*, void*);
 void sxml_register_comment_func(SXMLExplorer*, void*);
 void sxml_enable_entity_processing(SXMLExplorer*, unsigned char);
 void sxml_enable_namespace_processing(SXMLExplorer*, unsigned char);
+void sxml_enable_extended_entities(SXMLExplorer*, unsigned char);
+void sxml_enable_numeric_entities(SXMLExplorer*, unsigned char);
 
 unsigned char sxml_run_explorer(SXMLExplorer*, char*);
 
