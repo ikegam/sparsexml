@@ -10,7 +10,7 @@ The library implements a SAX-like streaming parser that generates events for XML
 - **Event-Driven**: SAX-style callback system for tags, attributes, and content
 - **Streaming Support**: Can process XML data in chunks for large documents
 - **Embedded-Friendly**: Written in C with minimal dependencies
-- **Simple API**: Only 4 functions to learn
+- **Simple API**: Easy-to-use callback-based interface
 
 ## API Reference
 
@@ -26,6 +26,8 @@ void sxml_register_func(SXMLExplorer* explorer,
 void sxml_register_comment_func(SXMLExplorer* explorer, void* comment_func);
 void sxml_enable_entity_processing(SXMLExplorer* explorer, unsigned char enable);
 void sxml_enable_namespace_processing(SXMLExplorer* explorer, unsigned char enable);
+void sxml_enable_extended_entities(SXMLExplorer* explorer, unsigned char enable);
+void sxml_enable_numeric_entities(SXMLExplorer* explorer, unsigned char enable);
 unsigned char sxml_run_explorer(SXMLExplorer* explorer, char* xml);
 ```
 
@@ -74,8 +76,10 @@ int main() {
     // Enable advanced features
     sxml_enable_entity_processing(explorer, 1);
     sxml_enable_namespace_processing(explorer, 1);
+    sxml_enable_extended_entities(explorer, 1);
+    sxml_enable_numeric_entities(explorer, 1);
     
-    char xml[] = "<?xml version=\"1.0\"?><!-- Comment --><ns:root>&lt;content&gt;</ns:root>";
+    char xml[] = "<?xml version=\"1.0\"?><!-- Comment --><ns:root>&lt;content&gt; &copy; &#65;</ns:root>";
     unsigned char result = sxml_run_explorer(explorer, xml);
     
     sxml_destroy_explorer(explorer);
@@ -94,11 +98,14 @@ int main() {
 ### XML Features Supported ✅
 - ✅ XML comments (`<!-- -->`)
 - ✅ CDATA sections (`<![CDATA[]]>`)
-- ✅ Entity references (`&lt;`, `&gt;`, `&amp;`, `&quot;`, `&apos;`) - **NEW!**
-- ✅ XML namespaces (`ns:tag` format) - **NEW!**
-- ✅ Basic DOCTYPE parsing - **NEW!**
+- ✅ **Standard XML entities** (`&lt;`, `&gt;`, `&amp;`, `&quot;`, `&apos;`) - **COMPLETED!**
+- ✅ **Numeric character references** (`&#65;`, `&#x41;`) - **COMPLETED!**
+- ✅ **Extended HTML entities** (`&copy;`, `&reg;`, `&trade;`, `&nbsp;`, etc.) - **COMPLETED!**
+- ✅ XML namespaces (`ns:tag` format)
+- ✅ Basic DOCTYPE parsing
 - ✅ Buffer overflow protection
-- ✅ Enhanced error handling with specific error codes - **NEW!**
+- ✅ Enhanced error handling with specific error codes
+- ✅ **Configurable entity processing** with enable/disable flags - **COMPLETED!**
 - ✅ Basic XML structure parsing
 
 ### XML Features Not Supported
@@ -107,12 +114,6 @@ int main() {
 - Custom entity definitions
 - XML Schema validation
 - Advanced namespace URIs
-
-### Known Issues (Fixed)
-- ~~Buffer overflow risk~~ ✅ **FIXED**: Now includes buffer boundary checks
-- ~~Missing break statement~~ ✅ **FIXED**: Added missing break in attribute parsing
-- ~~No entity support~~ ✅ **FIXED**: Added standard XML entity references
-- ~~No namespace support~~ ✅ **FIXED**: Added basic namespace processing
 
 ## Building and Testing
 ```bash
@@ -133,21 +134,42 @@ make
 ## License
 This project is licensed under the BSD 4-Clause License - see the [LICENSE](LICENSE) file for details.
 
-## Latest Updates (v2.0)
-Major enhancements in this version:
-- ✅ **Entity reference support**: Handle `&lt;`, `&gt;`, `&amp;`, `&quot;`, `&apos;`
+## Latest Updates (v2.1) - Entity Processing Complete!
+Major enhancements completed in this version:
+- ✅ **Comprehensive Entity Processing**: 
+  - Standard XML entities (`&lt;`, `&gt;`, `&amp;`, `&quot;`, `&apos;`)
+  - Numeric character references (`&#65;`, `&#x41;`)
+  - Extended HTML entities (`&copy;`, `&reg;`, `&trade;`, `&nbsp;`, `&euro;`, `&pound;`)
+- ✅ **Configurable Entity Support**: Enable/disable different entity types individually
+- ✅ **Robust Buffer Management**: Fixed critical buffer management issues in entity processing
+- ✅ **Enhanced Testing**: Comprehensive test suite with 24 test cases including real-world XML
 - ✅ **XML namespace support**: Parse `ns:tag` format
 - ✅ **Better error handling**: Return specific error codes
 - ✅ **DOCTYPE parsing**: Basic DOCTYPE declaration support
 - ✅ **Enhanced API**: New enable/disable functions for optional features
 
+### Entity Processing Features:
+```c
+// Enable different types of entity processing
+sxml_enable_entity_processing(explorer, 1);      // Standard XML entities
+sxml_enable_numeric_entities(explorer, 1);       // &#65; and &#x41; format
+sxml_enable_extended_entities(explorer, 1);      // &copy;, &reg;, etc.
+```
+
+### Supported Entity Types:
+- **Standard XML**: `&lt;` → `<`, `&gt;` → `>`, `&amp;` → `&`, `&quot;` → `"`, `&apos;` → `'`
+- **Numeric Decimal**: `&#65;` → `A`, `&#32;` → space
+- **Numeric Hexadecimal**: `&#x41;` → `A`, `&#x20;` → space
+- **Extended HTML**: `&copy;` → `(c)`, `&reg;` → `(R)`, `&trade;` → `(TM)`, `&nbsp;` → space, `&euro;` → `E`, `&pound;` → `#`
+
 ## Future Enhancements
 Potential improvements for future versions:
 - **Configurable buffer size**: Runtime buffer size configuration
-- **Validation modes**: Optional well-formedness checking
+- **Validation modes**: Optional well-formedness checking  
 - **Custom entity definitions**: Support for user-defined entities
 - **Advanced namespace handling**: Full namespace URI support
 - **Streaming performance**: Optimizations for large document processing
+- **Memory optimization**: Further reduce RAM usage for ultra-constrained devices
 
 ## Contributing
 This is a minimal implementation focused on embedded use cases. When contributing:
