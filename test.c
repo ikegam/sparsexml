@@ -160,6 +160,79 @@ void test_check_parsing_cdata(void) {
   sxml_destroy_explorer(explorer);
 }
 
+void test_check_parsing_entities(void) {
+  SXMLExplorer* explorer;
+  char xml[] = "<?xml version=\"1.0\"?><root>simple content</root>";
+  unsigned int content_count = 0;
+  
+  unsigned char on_content(char *content) {
+    content_count++;
+    if (content_count == 1) {
+      CU_ASSERT(strcmp(content, "simple content") == 0);
+    }
+    return SXMLExplorerContinue;
+  }
+  
+  explorer = sxml_make_explorer();
+  sxml_enable_entity_processing(explorer, 1);
+  sxml_register_func(explorer, NULL, on_content, NULL, NULL);
+  sxml_run_explorer(explorer, xml);
+  
+  CU_ASSERT(content_count == 1);
+  sxml_destroy_explorer(explorer);
+}
+
+void test_check_parsing_namespaces(void) {
+  SXMLExplorer* explorer;
+  char xml[] = "<?xml version=\"1.0\"?><ns:root xmlns:ns=\"http://example.com\"><ns:child>content</ns:child></ns:root>";
+  unsigned int tag_count = 0;
+  
+  unsigned char on_tag(char *name) {
+    tag_count++;
+    if (tag_count == 1) {
+      CU_ASSERT(strcmp(name, "root") == 0);  // namespace processing strips prefix
+    } else if (tag_count == 2) {
+      CU_ASSERT(strcmp(name, "child") == 0);
+    } else if (tag_count == 3) {
+      CU_ASSERT(strcmp(name, "child") == 0);  // closing tag
+    } else if (tag_count == 4) {
+      CU_ASSERT(strcmp(name, "root") == 0);   // closing tag
+    }
+    return SXMLExplorerContinue;
+  }
+  
+  explorer = sxml_make_explorer();
+  sxml_enable_namespace_processing(explorer, 1);
+  sxml_register_func(explorer, on_tag, NULL, NULL, NULL);
+  sxml_run_explorer(explorer, xml);
+  
+  CU_ASSERT(tag_count == 4);
+  sxml_destroy_explorer(explorer);
+}
+
+void test_check_parsing_doctype(void) {
+  SXMLExplorer* explorer;
+  char xml[] = "<?xml version=\"1.0\"?><!DOCTYPE root SYSTEM \"example.dtd\"><root>content</root>";
+  unsigned int tag_count = 0;
+  
+  unsigned char on_tag(char *name) {
+    tag_count++;
+    if (tag_count == 1) {
+      CU_ASSERT(strcmp(name, "root") == 0);
+    } else if (tag_count == 2) {
+      CU_ASSERT(strcmp(name, "/root") == 0);
+    }
+    return SXMLExplorerContinue;
+  }
+  
+  explorer = sxml_make_explorer();
+  sxml_register_func(explorer, on_tag, NULL, NULL, NULL);
+  sxml_run_explorer(explorer, xml);
+  
+  CU_ASSERT(tag_count == 2);
+  sxml_destroy_explorer(explorer);
+}
+
 int main(void) {
   CU_pSuite suite;
   CU_initialize_registry();
@@ -171,6 +244,9 @@ int main(void) {
   CU_add_test(suite, "Check parsing attribute", test_check_parsing_attribute);
   CU_add_test(suite, "Check XML comment parsing", test_check_parsing_comments);
   CU_add_test(suite, "Check CDATA section parsing", test_check_parsing_cdata);
+  CU_add_test(suite, "Check entity reference parsing", test_check_parsing_entities);
+  CU_add_test(suite, "Check namespace parsing", test_check_parsing_namespaces);
+  CU_add_test(suite, "Check DOCTYPE parsing", test_check_parsing_doctype);
   CU_basic_run_tests();
   CU_cleanup_registry();
 

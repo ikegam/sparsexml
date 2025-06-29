@@ -10,12 +10,18 @@ unsigned char priv_sxml_change_explorer_state(SXMLExplorer* explorer, SXMLExplor
   unsigned char ret = SXMLExplorerContinue;
 
   if (strlen(explorer->buffer) > 0) {
-           if (explorer->state == IN_TAG && state == IN_CONTENT && explorer->tag_func != NULL) {
-      ret = explorer->tag_func(explorer->buffer);
-    } else if (explorer->state == IN_TAG && state == IN_TAG && explorer->tag_func != NULL) {
-      ret = explorer->tag_func(explorer->buffer);
-    } else if (explorer->state == IN_TAG && state == IN_ATTRIBUTE_KEY && explorer->tag_func != NULL) {
-      ret = explorer->tag_func(explorer->buffer);
+    if (explorer->state == IN_TAG && (state == IN_CONTENT || state == IN_TAG || state == IN_ATTRIBUTE_KEY) && explorer->tag_func != NULL) {
+      if (explorer->enable_namespace_processing) {
+        char* namespace_uri = NULL;
+        char* local_name = NULL;
+        char tag_copy[SXMLElementLength];
+        strcpy(tag_copy, explorer->buffer);
+        priv_sxml_process_namespace(tag_copy, &namespace_uri, &local_name);
+        // For simplicity, we pass the local name for now
+        ret = explorer->tag_func(local_name ? local_name : explorer->buffer);
+      } else {
+        ret = explorer->tag_func(explorer->buffer);
+      }
     } else if (explorer->state == IN_CONTENT && state == IN_TAG && explorer->content_func != NULL) {
       ret = explorer->content_func(explorer->buffer);
     } else if (explorer->state == IN_ATTRIBUTE_KEY && state == IN_ATTRIBUTE_VALUE && explorer->attribute_key_func != NULL) {
@@ -52,6 +58,9 @@ SXMLExplorer* sxml_make_explorer(void) {
   explorer->comment_depth = 0;
   explorer->cdata_pos = 0;
   explorer->comment_func = NULL;
+  explorer->prev_state = INITIAL;
+  explorer->enable_entity_processing = 0;
+  explorer->enable_namespace_processing = 0;
 
   return explorer;
 }
@@ -69,6 +78,53 @@ void sxml_register_func(SXMLExplorer* explorer, void* open, void* content, void*
 
 void sxml_register_comment_func(SXMLExplorer* explorer, void* comment) {
   explorer->comment_func = comment;
+}
+
+void sxml_enable_entity_processing(SXMLExplorer* explorer, unsigned char enable) {
+  explorer->enable_entity_processing = enable;
+}
+
+void sxml_enable_namespace_processing(SXMLExplorer* explorer, unsigned char enable) {
+  explorer->enable_namespace_processing = enable;
+}
+
+unsigned char priv_sxml_process_entity(SXMLExplorer* explorer, char* entity_buffer) {
+  char replacement = '\0';
+  
+  if (strcmp(entity_buffer, "lt") == 0) {
+    replacement = '<';
+  } else if (strcmp(entity_buffer, "gt") == 0) {
+    replacement = '>';
+  } else if (strcmp(entity_buffer, "amp") == 0) {
+    replacement = '&';
+  } else if (strcmp(entity_buffer, "quot") == 0) {
+    replacement = '"';
+  } else if (strcmp(entity_buffer, "apos") == 0) {
+    replacement = '\'';
+  } else {
+    return SXMLExplorerErrorInvalidEntity;
+  }
+  
+  if (explorer->bp < SXMLElementLength - 1) {
+    explorer->buffer[explorer->bp++] = replacement;
+    explorer->buffer[explorer->bp] = '\0';
+  } else {
+    return SXMLExplorerErrorBufferOverflow;
+  }
+  
+  return SXMLExplorerContinue;
+}
+
+void priv_sxml_process_namespace(char* tag_name, char** namespace_uri, char** local_name) {
+  char* colon_pos = strchr(tag_name, ':');
+  if (colon_pos != NULL) {
+    *colon_pos = '\0';  // Split the string
+    *namespace_uri = tag_name;
+    *local_name = colon_pos + 1;
+  } else {
+    *namespace_uri = NULL;
+    *local_name = tag_name;
+  }
 }
 
 unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
@@ -132,6 +188,15 @@ unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
           case '"':
             result = priv_sxml_change_explorer_state(explorer, IN_TAG);
             continue;
+          case '&':
+            if (explorer->enable_entity_processing) {
+              explorer->prev_state = explorer->state;
+              explorer->state = IN_ENTITY;
+              explorer->bp = 0;
+              explorer->buffer[0] = '\0';
+              continue;
+            }
+            break;
         }
         break;
       case IN_CONTENT:
@@ -150,8 +215,23 @@ unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
               xml += 8; // Skip '![CDATA['
               continue;
             }
+            // Check for DOCTYPE start: <!DOCTYPE
+            if (*(xml+1) == '!' && strncmp(xml+2, "DOCTYPE", 7) == 0) {
+              result = priv_sxml_change_explorer_state(explorer, IN_DOCTYPE);
+              xml += 8; // Skip '!DOCTYPE'
+              continue;
+            }
             result = priv_sxml_change_explorer_state(explorer, IN_TAG);
             continue;
+          case '&':
+            if (explorer->enable_entity_processing) {
+              explorer->prev_state = explorer->state;
+              explorer->state = IN_ENTITY;
+              explorer->bp = 0;
+              explorer->buffer[0] = '\0';
+              continue;
+            }
+            break;
         }
         break;
       case IN_COMMENT:
@@ -170,13 +250,44 @@ unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
           continue;
         }
         break;
+      case IN_ENTITY:
+        if (*xml == ';') {
+          // Process entity reference
+          char entity_buffer[32];
+          if (explorer->bp < sizeof(entity_buffer) - 1) {
+            strncpy(entity_buffer, explorer->buffer, explorer->bp);
+            entity_buffer[explorer->bp] = '\0';
+            explorer->bp = 0;
+            explorer->buffer[0] = '\0';
+            result = priv_sxml_process_entity(explorer, entity_buffer);
+            if (result != SXMLExplorerContinue) {
+              return result;
+            }
+            explorer->state = explorer->prev_state;
+            continue;
+          } else {
+            return SXMLExplorerErrorInvalidEntity;
+          }
+        }
+        break;
+      case IN_DOCTYPE:
+        if (*xml == '>') {
+          result = priv_sxml_change_explorer_state(explorer, IN_CONTENT);
+          continue;
+        }
+        break;
     }
-    if (explorer->bp < SXMLElementLength - 1) {
-      explorer->buffer[explorer->bp++] = *xml;
-      explorer->buffer[explorer->bp] = '\0';
+    // Add character to buffer unless we're in an entity state and it's an entity delimiter
+    if (explorer->state == IN_ENTITY && (*xml == '&' || *xml == ';')) {
+      // Skip entity delimiters
     } else {
-      // Buffer overflow prevention - truncate
-      explorer->buffer[SXMLElementLength - 1] = '\0';
+      if (explorer->bp < SXMLElementLength - 1) {
+        explorer->buffer[explorer->bp++] = *xml;
+        explorer->buffer[explorer->bp] = '\0';
+      } else {
+        // Buffer overflow prevention - truncate
+        explorer->buffer[SXMLElementLength - 1] = '\0';
+      }
     }
 
   } while ((*++xml != '\0') && (result == SXMLExplorerContinue));

@@ -11,6 +11,9 @@ struct __SXMLExplorer {
   unsigned char header_parsed;
   unsigned int comment_depth;  // For nested comment detection
   unsigned int cdata_pos;      // Position counter for CDATA detection
+  SXMLExplorerState prev_state; // Previous state for entity processing
+  unsigned char enable_entity_processing; // Flag to enable/disable entity processing
+  unsigned char enable_namespace_processing; // Flag to enable/disable namespace processing
 
   unsigned char (*tag_func)(char *);
   unsigned char (*content_func)(char *);
@@ -20,5 +23,7 @@ struct __SXMLExplorer {
 };
 
 unsigned char priv_sxml_change_explorer_state(SXMLExplorer* explorer, SXMLExplorerState state);
+unsigned char priv_sxml_process_entity(SXMLExplorer* explorer, char* entity_buffer);
+void priv_sxml_process_namespace(char* tag_name, char** namespace_uri, char** local_name);
 
 #endif
