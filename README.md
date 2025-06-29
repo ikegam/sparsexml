@@ -87,6 +87,14 @@ int main() {
 }
 ```
 
+## Sample Program
+A minimal demo is available in the `sample` directory. Build with `make` and run:
+
+```bash
+./sample/simple
+```
+to see parsing output.
+
 ## Limitations
 ⚠️ **Important**: This is a minimal parser with several limitations:
 
@@ -119,6 +127,7 @@ int main() {
 ```bash
 make
 ./test-sparsexml
+./sample/simple
 ```
 
 ## Memory Requirements
