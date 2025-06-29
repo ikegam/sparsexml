@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include <sys/resource.h>
+#include <malloc.h>
 #include "sparsexml.h"
 
 static const char xml[] = "<?xml version=\"1.0\"?><root attr=\"value\">text<child>child</child></root>";
@@ -123,10 +123,14 @@ static void run_expat_test(void){
 }
 
 void bench_sparsexml(int iterations, size_t *avg_mem, size_t *max_mem){
+    struct mallinfo2 mi = mallinfo2();
+    size_t start = mi.uordblks;
     SXMLExplorer* ex = sxml_make_explorer();
     sxml_register_func(ex, tag_cb, content_cb, attr_key_cb, attr_value_cb);
-    size_t total = 0;
-    size_t maximum = 0;
+    mi = mallinfo2();
+    size_t used = mi.uordblks - start;
+    size_t total = used * iterations;
+    size_t maximum = used;
     for(int i=0;i<iterations;i++){
         sxml_run_explorer(ex,(char*)xml);
         size_t rss = current_rss_kb();
@@ -140,10 +144,17 @@ void bench_sparsexml(int iterations, size_t *avg_mem, size_t *max_mem){
 }
 
 void bench_expat(int iterations, size_t *avg_mem, size_t *max_mem){
+    struct mallinfo2 mi = mallinfo2();
+    size_t start = mi.uordblks;
     size_t total = 0;
     size_t maximum = 0;
     for(int i=0;i<iterations;i++){
         XML_Parser p = XML_ParserCreate(NULL);
+        mi = mallinfo2();
+        size_t used = mi.uordblks - start;
+        if(used > maximum)
+            maximum = used;
+        total += used;
         XML_Parse(p, xml, strlen(xml), XML_TRUE);
         XML_ParserFree(p);
         size_t rss = current_rss_kb();
@@ -177,10 +188,10 @@ int main(int argc, char **argv){
     double expat_time = (double)(end - start) / CLOCKS_PER_SEC;
 
     printf("SparseXML: %f seconds for %d iterations\n", sparse_time, iter);
-    printf("  Avg memory: %zu kB\n", sparse_avg);
-    printf("  Max memory: %zu kB\n", sparse_max);
+    printf("  Avg memory: %zu bytes\n", sparse_avg);
+    printf("  Max memory: %zu bytes\n", sparse_max);
     printf("Expat:     %f seconds for %d iterations\n", expat_time, iter);
-    printf("  Avg memory: %zu kB\n", expat_avg);
-    printf("  Max memory: %zu kB\n", expat_max);
+    printf("  Avg memory: %zu bytes\n", expat_avg);
+    printf("  Max memory: %zu bytes\n", expat_max);
     return 0;
 }
