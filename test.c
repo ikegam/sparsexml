@@ -4,6 +4,7 @@
 #include "sparsexml.h"
 
 void add_private_test(CU_pSuite*);
+void add_oss_xml_tests(CU_pSuite*);
 
 void test_parse_simple_xml(void) {
   SXMLExplorer* explorer;
@@ -247,6 +248,7 @@ int main(void) {
   CU_add_test(suite, "Check entity reference parsing", test_check_parsing_entities);
   CU_add_test(suite, "Check namespace parsing", test_check_parsing_namespaces);
   CU_add_test(suite, "Check DOCTYPE parsing", test_check_parsing_doctype);
+  add_oss_xml_tests(&suite);
   CU_basic_run_tests();
   CU_cleanup_registry();
 
