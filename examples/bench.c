@@ -18,20 +18,6 @@ static unsigned int expat_tag_count;
 static unsigned int expat_content_count;
 static unsigned int expat_attr_count;
 
-static size_t current_rss_kb(void){
-    FILE *f = fopen("/proc/self/status", "r");
-    if(!f) return 0;
-    char line[256];
-    size_t rss = 0;
-    while(fgets(line, sizeof(line), f)){
-        if(strncmp(line, "VmRSS:", 6) == 0){
-            sscanf(line + 6, "%zu", &rss);
-            break;
-        }
-    }
-    fclose(f);
-    return rss;
-}
 
 static void reset_counters(void){
     tag_count = 0;
@@ -123,44 +109,33 @@ static void run_expat_test(void){
 }
 
 void bench_sparsexml(int iterations, size_t *avg_mem, size_t *max_mem){
-    struct mallinfo2 mi = mallinfo2();
-    size_t start = mi.uordblks;
-    SXMLExplorer* ex = sxml_make_explorer();
-    sxml_register_func(ex, tag_cb, content_cb, attr_key_cb, attr_value_cb);
-    mi = mallinfo2();
-    size_t used = mi.uordblks - start;
-    size_t total = used * iterations;
-    size_t maximum = used;
+    size_t total = 0;
+    size_t maximum = 0;
     for(int i=0;i<iterations;i++){
+        SXMLExplorer* ex = sxml_make_explorer();
+        sxml_register_func(ex, tag_cb, content_cb, attr_key_cb, attr_value_cb);
+        size_t used = malloc_usable_size(ex);
+        if(used > maximum)
+            maximum = used;
+        total += used;
         sxml_run_explorer(ex,(char*)xml);
-        size_t rss = current_rss_kb();
-        total += rss;
-        if(rss > maximum)
-            maximum = rss;
+        sxml_destroy_explorer(ex);
     }
-    sxml_destroy_explorer(ex);
     if(avg_mem) *avg_mem = total / iterations;
     if(max_mem) *max_mem = maximum;
 }
 
 void bench_expat(int iterations, size_t *avg_mem, size_t *max_mem){
-    struct mallinfo2 mi = mallinfo2();
-    size_t start = mi.uordblks;
     size_t total = 0;
     size_t maximum = 0;
     for(int i=0;i<iterations;i++){
         XML_Parser p = XML_ParserCreate(NULL);
-        mi = mallinfo2();
-        size_t used = mi.uordblks - start;
+        size_t used = malloc_usable_size(p);
         if(used > maximum)
             maximum = used;
         total += used;
         XML_Parse(p, xml, strlen(xml), XML_TRUE);
         XML_ParserFree(p);
-        size_t rss = current_rss_kb();
-        total += rss;
-        if(rss > maximum)
-            maximum = rss;
     }
     if(avg_mem) *avg_mem = total / iterations;
     if(max_mem) *max_mem = maximum;
