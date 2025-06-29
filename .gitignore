@@ -1,2 +1,4 @@
 *.o
 test-sparsexml
+examples/bench
+examples/bench_large_mem
