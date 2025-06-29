@@ -1,23 +1,34 @@
-CFLAGS=-Wall -g -O0 -I.
+CC ?= gcc
+CFLAGS ?= -Wall -g -O0 -I.
+
+SRC = sparsexml.c
+OBJ = $(SRC:.c=.o)
+
+TEST_SRC = test.c test-private.c test-oss-xml.c test-entities.c
+TEST_OBJ = $(TEST_SRC:.c=.o)
+
+EXAMPLES_SRC = examples/simple.c examples/bench.c
+EXAMPLES_OBJ = $(EXAMPLES_SRC:.c=.o)
 
 all: test-sparsexml examples/simple examples/bench
 
 test: test-sparsexml
 	./$<
 
-test-sparsexml: sparsexml.o test.o test-private.o test-oss-xml.o test-entities.o
+test-sparsexml: $(OBJ) $(TEST_OBJ)
 	$(CC) $(CFLAGS) -o $@ $^ -lcunit
 
-examples/simple: sparsexml.o examples/simple.o
+examples/simple: $(OBJ) examples/simple.o
 	$(CC) $(CFLAGS) -o $@ $^
 
-examples/bench: sparsexml.o examples/bench.o
+examples/bench: $(OBJ) examples/bench.o
 	$(CC) $(CFLAGS) -o $@ $^ -lexpat
 
-.c.o:
+%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f test-sparsexml sample/simple *.o sample/*.o
+	rm -f $(OBJ) $(TEST_OBJ) $(EXAMPLES_OBJ)
+	rm -f test-sparsexml examples/simple examples/bench
 
 .PHONY: clean all test
