@@ -12,6 +12,19 @@ The library implements a SAX-like streaming parser that generates events for XML
 - **Embedded-Friendly**: Written in C with minimal dependencies
 - **Simple API**: Easy-to-use callback-based interface
 
+## File Overview
+This repository contains example programs and a set of tests, but the actual
+library is intentionally tiny.  The parser is built from just three source
+files:
+
+1. `sparsexml.h` – public API header
+2. `sparsexml-priv.h` – internal definitions
+3. `sparsexml.c` – implementation
+
+For users of the library, only `sparsexml.h` needs to be included and
+understood.  All other files are for examples and test cases, emphasizing the
+minimalism of the implementation.
+
 ## API Reference
 
 ### Core Functions

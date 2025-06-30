@@ -30,7 +30,8 @@ void sxml_register_func(SXMLExplorer* explorer,
                        void* attribute_value_func);
 ```
 
-エンティティ処理や名前空間処理はオプションとして有効化でき、用途に応じて機能を絞ることが可能である。詳細なAPIはリポジトリの`README.md`で解説されている【F:README.md†L23-L44】。
+エンティティ処理や名前空間処理はオプションとして有効化でき、用途に応じて機能を絞ることが可能である。詳細なAPIはリポジトリの`README.md`で解説されている【F:README.md†L32-L63】。
+本リポジトリにはベンチマークやテスト用の多数のファイルが含まれているが、ライブラリ本体は`sparsexml.h`、`sparsexml-priv.h`、`sparsexml.c`の3ファイルのみで構成されている。利用者が確認すべき公開インタフェースは`sparsexml.h`だけである。
 
 ## 4. 評価
 ### 4.1 テスト環境
