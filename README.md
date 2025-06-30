@@ -100,11 +100,11 @@ int main() {
 }
 ```
 
-## Sample Program
-A minimal demo is available in the `sample` directory. Build with `make` and run:
+## Example Program
+A minimal demo is available in the `examples` directory. Build with `make` and run:
 
 ```bash
-./sample/simple
+./examples/simple
 ```
 to see parsing output.
 
@@ -140,12 +140,26 @@ to see parsing output.
 ```bash
 make
 ./test-sparsexml
-./sample/simple
+./examples/simple
 ```
 
 ## Memory Requirements
 - **RAM**: ~1KB for parsing buffer + minimal stack usage
 - **Flash**: ~2KB for code (varies by compiler/architecture)
+
+## Benchmark Results
+SparseXML provides competitive performance compared to popular XML parsers.  The
+following table summarizes memory usage and execution time on an AMD EPYC 7571
+(gcc -O0) when parsing different workloads:
+
+| Benchmark     | Param  | SparseXML (bytes) | Expat (bytes) | TinyXML (bytes) | SparseXML time(s) | Expat time(s) | Tiny time(s) |
+|---------------|-------:|------------------:|--------------:|----------------:|------------------:|--------------:|-------------:|
+| basic         | 100000 | 1144              | 1048          | 96              | 0.052120          | 0.273421      | 0.003042     |
+| large_mem     |   1000 | 1152              | 35952         | 28048           | 0.000184          | 0.000454      | 0.000001     |
+| deep_nesting  |    100 | 1152              | 18448         | 1552            | 0.000011          | 0.000022      | 0.000002     |
+| many_attrs    |     50 | 1152              | 10000         | 432             | 0.000005          | 0.000099      | 0.000000     |
+| comments      |    100 | 1152              | 4176          | 1648            | 0.000008          | 0.000006      | 0.000001     |
+| entities      |   1000 | 1152              | 18512         | 15040           | 0.000061          | 0.000003      | 0.000000     |
 
 ## Use Cases
 - Configuration file parsing on microcontrollers
