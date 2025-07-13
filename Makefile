@@ -1,5 +1,6 @@
 CC ?= gcc
 CFLAGS ?= -Wall -g -O0 -I.
+LDFLAGS ?= -Wl,-z,noexecstack
 
 SRC = sparsexml.c
 OBJ = $(SRC:.c=.o)
@@ -25,13 +26,13 @@ test: test-sparsexml
 	./$<
 
 test-sparsexml: $(OBJ) $(TEST_OBJ)
-	$(CC) $(CFLAGS) -o $@ $^ -lcunit
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ -lcunit
 
 examples/simple: $(OBJ) examples/simple.o
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 bench/bench: $(OBJ) $(BENCH_OBJ)
-	$(CC) $(CFLAGS) -o $@ $^ -lexpat
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ -lexpat
 bench/bench.o: bench/bench.c
 	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
 bench/bench_large_mem.o: bench/bench_large_mem.c
