@@ -41,7 +41,6 @@ static size_t mem_usage_sparsexml(char* xml, double* t){
 static void start(void *ud,const char *name,const char **atts){ (void)ud; (void)name; (void)atts; }
 static void end(void *ud,const char *name){ (void)ud; (void)name; }
 static void ch(void *ud,const char *s,int len){ (void)ud; (void)s; (void)len; }
-static void comment_start(void *ud, const char *name, const char **atts){ (void)ud; (void)name; (void)atts; }
 
 static size_t mem_usage_expat(char* xml, double* t){
     struct mallinfo2 mi_before = mallinfo2();

@@ -16,7 +16,7 @@ static void build_xml(char** out, int count){
     char *buf = malloc(size);
     strcpy(buf, "<root");
     for(int i=0;i<count;i++){
-        char tmp[16];
+        char tmp[32];
         sprintf(tmp, " a%d=\"v\"", i);
         strcat(buf, tmp);
     }
