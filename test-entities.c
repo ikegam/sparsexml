@@ -1,5 +1,7 @@
 #include <CUnit/CUnit.h>
 #include <CUnit/Basic.h>
+#include <string.h>
+#include <stdio.h>
 
 #include "sparsexml.h"
 

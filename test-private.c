@@ -1,7 +1,22 @@
 #include <CUnit/CUnit.h>
 #include <CUnit/Basic.h>
+#include <string.h>
 
 #include "sparsexml-priv.h"
+
+// Static callback function for test_parse_separated_xml
+static unsigned char test_parse_separated_xml_on_tag(char *name) {
+  static int c = 0;
+  if (strcmp("tag", name) == 0 && c == 0) {
+    c++;
+  } else if (strcmp("/tag", name) == 0 && c == 1) {
+    c++;
+  }
+  if (c==2) {
+    return SXMLExplorerStop;
+  }
+  return SXMLExplorerContinue;
+}
 
 void test_initialize_explorer(void) {
   SXMLExplorer* explorer;
@@ -21,21 +36,8 @@ void test_parse_separated_xml(void) {
   char xml4[] = "g></tag>";
   unsigned char ret;
 
-  unsigned char on_tag(char *name) {
-    static int c = 0;
-    if (strcmp("tag", name) == 0 && c == 0) {
-      c++;
-    } else if (strcmp("/tag", name) == 0 && c == 1) {
-      c++;
-    }
-    if (c==2) {
-      return SXMLExplorerStop;
-    }
-    return SXMLExplorerContinue;
-  }
-
   explorer = sxml_make_explorer();
-  sxml_register_func(explorer, &on_tag, NULL, NULL, NULL);
+  sxml_register_func(explorer, test_parse_separated_xml_on_tag, NULL, NULL, NULL);
   ret = sxml_run_explorer(explorer, xml1);
   CU_ASSERT (explorer->state == IN_DECLARATION);
   ret = sxml_run_explorer(explorer, xml2);
