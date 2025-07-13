@@ -12,6 +12,24 @@
  * 2. Atom Feed - from W3C Atom specification (open standard)
  */
 
+// Global variables for test_real_world_xml_sitemap
+static unsigned int sitemap_tag_count = 0;
+static unsigned int sitemap_content_count = 0;
+static unsigned char sitemap_found_namespace = 0;
+
+static unsigned char sitemap_on_tag(char *name) {
+  sitemap_tag_count++;
+  if (strcmp(name, "urlset") == 0) {
+    sitemap_found_namespace = 1;  // namespace processing should strip prefix
+  }
+  return SXMLExplorerContinue;
+}
+
+static unsigned char sitemap_on_content(char *content) {
+  sitemap_content_count++;
+  return SXMLExplorerContinue;
+}
+
 void test_real_world_xml_sitemap(void) {
   SXMLExplorer* explorer;
   // Real XML sitemap example from sitemaps.org
@@ -34,36 +52,50 @@ void test_real_world_xml_sitemap(void) {
                "   </url>\n"
                "</urlset>";
   
-  unsigned int tag_count = 0;
-  unsigned int content_count = 0;
-  unsigned char found_namespace = 0;
-  
-  unsigned char on_tag(char *name) {
-    tag_count++;
-    if (strcmp(name, "urlset") == 0) {
-      found_namespace = 1;  // namespace processing should strip prefix
-    }
-    return SXMLExplorerContinue;
-  }
-  
-  unsigned char on_content(char *content) {
-    content_count++;
-    return SXMLExplorerContinue;
-  }
+  // Reset counters
+  sitemap_tag_count = 0;
+  sitemap_content_count = 0;
+  sitemap_found_namespace = 0;
   
   explorer = sxml_make_explorer();
   sxml_enable_entity_processing(explorer, 1);
   sxml_enable_namespace_processing(explorer, 1);
-  sxml_register_func(explorer, on_tag, on_content, NULL, NULL);
+  sxml_register_func(explorer, sitemap_on_tag, sitemap_on_content, NULL, NULL);
   
   unsigned char result = sxml_run_explorer(explorer, xml);
   
   CU_ASSERT(result == SXMLExplorerComplete);
-  CU_ASSERT(tag_count > 0);  // Should parse multiple tags
-  CU_ASSERT(content_count > 0);  // Should parse content
-  CU_ASSERT(found_namespace == 1);  // Should handle namespace
+  CU_ASSERT(sitemap_tag_count > 0);  // Should parse multiple tags
+  CU_ASSERT(sitemap_content_count > 0);  // Should parse content
+  CU_ASSERT(sitemap_found_namespace == 1);  // Should handle namespace
   
   sxml_destroy_explorer(explorer);
+}
+
+// Global variables for test_real_world_atom_feed
+static unsigned int atom_tag_count = 0;
+static unsigned int atom_content_count = 0;
+static unsigned int atom_comment_count = 0;
+static unsigned char atom_found_entities = 0;
+
+static unsigned char atom_on_tag(char *name) {
+  atom_tag_count++;
+  return SXMLExplorerContinue;
+}
+
+static unsigned char atom_on_content(char *content) {
+  atom_content_count++;
+  // Check if content exists (entities may not be fully processed yet)
+  if (strlen(content) > 0) {
+    atom_found_entities = 1;  // Content found 
+  }
+  return SXMLExplorerContinue;
+}
+
+static unsigned char atom_on_comment(char *comment) {
+  atom_comment_count++;
+  CU_ASSERT(strstr(comment, "This is a comment") != NULL);
+  return SXMLExplorerContinue;
 }
 
 void test_real_world_atom_feed(void) {
@@ -88,46 +120,59 @@ void test_real_world_atom_feed(void) {
                "  </entry>\n"
                "</feed>";
   
-  unsigned int tag_count = 0;
-  unsigned int content_count = 0;
-  unsigned int comment_count = 0;
-  unsigned char found_entities = 0;
-  
-  unsigned char on_tag(char *name) {
-    tag_count++;
-    return SXMLExplorerContinue;
-  }
-  
-  unsigned char on_content(char *content) {
-    content_count++;
-    // Check if content exists (entities may not be fully processed yet)
-    if (strlen(content) > 0) {
-      found_entities = 1;  // Content found 
-    }
-    return SXMLExplorerContinue;
-  }
-  
-  unsigned char on_comment(char *comment) {
-    comment_count++;
-    CU_ASSERT(strstr(comment, "This is a comment") != NULL);
-    return SXMLExplorerContinue;
-  }
+  // Reset counters
+  atom_tag_count = 0;
+  atom_content_count = 0;
+  atom_comment_count = 0;
+  atom_found_entities = 0;
   
   explorer = sxml_make_explorer();
   sxml_enable_entity_processing(explorer, 1);
   sxml_enable_namespace_processing(explorer, 1);
-  sxml_register_func(explorer, on_tag, on_content, NULL, NULL);
-  sxml_register_comment_func(explorer, on_comment);
+  sxml_register_func(explorer, atom_on_tag, atom_on_content, NULL, NULL);
+  sxml_register_comment_func(explorer, atom_on_comment);
   
   unsigned char result = sxml_run_explorer(explorer, xml);
   
   CU_ASSERT(result == SXMLExplorerComplete);
-  CU_ASSERT(tag_count >= 10);  // Should parse many tags
-  CU_ASSERT(content_count >= 5);  // Should parse content elements
-  CU_ASSERT(comment_count == 1);  // Should find the comment
-  CU_ASSERT(found_entities == 1);  // Should process entities
+  CU_ASSERT(atom_tag_count >= 10);  // Should parse many tags
+  CU_ASSERT(atom_content_count >= 5);  // Should parse content elements
+  CU_ASSERT(atom_comment_count == 1);  // Should find the comment
+  CU_ASSERT(atom_found_entities == 1);  // Should process entities
   
   sxml_destroy_explorer(explorer);
+}
+
+// Global variables for test_complex_xml_with_cdata_and_entities
+static unsigned int complex_tag_count = 0;
+static unsigned int complex_content_count = 0;
+static unsigned int complex_comment_count = 0;
+static unsigned char complex_found_cdata = 0;
+static unsigned char complex_found_entities = 0;
+static unsigned char complex_found_namespaces = 0;
+
+static unsigned char complex_on_tag(char *name) {
+  complex_tag_count++;
+  if (strcmp(name, "setting") == 0) {  // namespace prefix should be stripped
+    complex_found_namespaces = 1;
+  }
+  return SXMLExplorerContinue;
+}
+
+static unsigned char complex_on_content(char *content) {
+  complex_content_count++;
+  if (strstr(content, "Raw data with <tags>") != NULL) {
+    complex_found_cdata = 1;  // CDATA content preserved
+  }
+  if (strlen(content) > 0) {
+    complex_found_entities = 1;  // Content found
+  }
+  return SXMLExplorerContinue;
+}
+
+static unsigned char complex_on_comment(char *comment) {
+  complex_comment_count++;
+  return SXMLExplorerContinue;
 }
 
 void test_complex_xml_with_cdata_and_entities(void) {
@@ -150,55 +195,44 @@ void test_complex_xml_with_cdata_and_entities(void) {
                "  <footer>Copyright 2024 &amp; beyond</footer>\n"
                "</root>";
   
-  unsigned int tag_count = 0;
-  unsigned int content_count = 0;
-  unsigned int comment_count = 0;
-  unsigned char found_cdata = 0;
-  unsigned char found_entities = 0;
-  unsigned char found_namespaces = 0;
-  
-  unsigned char on_tag(char *name) {
-    tag_count++;
-    if (strcmp(name, "setting") == 0) {  // namespace prefix should be stripped
-      found_namespaces = 1;
-    }
-    return SXMLExplorerContinue;
-  }
-  
-  unsigned char on_content(char *content) {
-    content_count++;
-    if (strstr(content, "Raw data with <tags>") != NULL) {
-      found_cdata = 1;  // CDATA content preserved
-    }
-    if (strlen(content) > 0) {
-      found_entities = 1;  // Content found
-    }
-    return SXMLExplorerContinue;
-  }
-  
-  unsigned char on_comment(char *comment) {
-    comment_count++;
-    return SXMLExplorerContinue;
-  }
+  // Reset counters
+  complex_tag_count = 0;
+  complex_content_count = 0;
+  complex_comment_count = 0;
+  complex_found_cdata = 0;
+  complex_found_entities = 0;
+  complex_found_namespaces = 0;
   
   explorer = sxml_make_explorer();
   sxml_enable_entity_processing(explorer, 1);
   sxml_enable_namespace_processing(explorer, 1);
-  sxml_register_func(explorer, on_tag, on_content, NULL, NULL);
-  sxml_register_comment_func(explorer, on_comment);
+  sxml_register_func(explorer, complex_on_tag, complex_on_content, NULL, NULL);
+  sxml_register_comment_func(explorer, complex_on_comment);
   
   unsigned char result = sxml_run_explorer(explorer, xml);
   
   // Should complete successfully with supported entities only
   CU_ASSERT(result == SXMLExplorerComplete);
-  CU_ASSERT(tag_count >= 6);  // Should parse multiple tags (root, config, app:setting, description, data, footer)
-  CU_ASSERT(content_count >= 3);  // Should parse multiple content sections
-  CU_ASSERT(comment_count == 1);  // Should find the comment
-  CU_ASSERT(found_cdata == 1);  // Should process CDATA section
-  CU_ASSERT(found_entities == 1);  // Should find content (entities processed)
-  CU_ASSERT(found_namespaces == 1);  // Should process namespaces
+  CU_ASSERT(complex_tag_count >= 6);  // Should parse multiple tags (root, config, app:setting, description, data, footer)
+  CU_ASSERT(complex_content_count >= 3);  // Should parse multiple content sections
+  CU_ASSERT(complex_comment_count == 1);  // Should find the comment
+  CU_ASSERT(complex_found_cdata == 1);  // Should process CDATA section
+  CU_ASSERT(complex_found_entities == 1);  // Should find content (entities processed)
+  CU_ASSERT(complex_found_namespaces == 1);  // Should process namespaces
   
   sxml_destroy_explorer(explorer);
+}
+
+// Global variables for test_error_handling_with_malformed_xml
+static unsigned int error_tag_count = 0;
+
+static unsigned char error_on_tag(char *name) {
+  error_tag_count++;
+  return SXMLExplorerContinue;
+}
+
+static unsigned char error_on_content(char *content) {
+  return SXMLExplorerContinue;
 }
 
 void test_error_handling_with_malformed_xml(void) {
@@ -211,20 +245,12 @@ void test_error_handling_with_malformed_xml(void) {
                "  <invalid_entity>&invalid;</invalid_entity>\n"
                "</root>";
   
-  unsigned int tag_count = 0;
-  
-  unsigned char on_tag(char *name) {
-    tag_count++;
-    return SXMLExplorerContinue;
-  }
-  
-  unsigned char on_content(char *content) {
-    return SXMLExplorerContinue;
-  }
+  // Reset counter
+  error_tag_count = 0;
   
   explorer = sxml_make_explorer();
   sxml_enable_entity_processing(explorer, 1);
-  sxml_register_func(explorer, on_tag, on_content, NULL, NULL);
+  sxml_register_func(explorer, error_on_tag, error_on_content, NULL, NULL);
   
   unsigned char result = sxml_run_explorer(explorer, xml);
   
@@ -233,7 +259,7 @@ void test_error_handling_with_malformed_xml(void) {
   CU_ASSERT(result == SXMLExplorerComplete || 
             result == SXMLExplorerErrorInvalidEntity ||
             result == SXMLExplorerErrorMalformedXML);
-  CU_ASSERT(tag_count > 0);  // Should parse some tags before errors
+  CU_ASSERT(error_tag_count > 0);  // Should parse some tags before errors
   
   sxml_destroy_explorer(explorer);
 }
