@@ -16,6 +16,9 @@ BENCH_SRC = bench/bench.c \
             bench/bench_many_attrs.c \
             bench/bench_comments.c \
             bench/bench_entities.c \
+            bench/bench_mixed_content.c \
+            bench/bench_stress_test.c \
+            bench/bench_unicode_content.c \
             bench/tinyxml_stub.c \
             bench/main.c
 BENCH_OBJ = $(BENCH_SRC:.c=.o)
@@ -44,6 +47,12 @@ bench/bench_many_attrs.o: bench/bench_many_attrs.c
 bench/bench_comments.o: bench/bench_comments.c
 	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
 bench/bench_entities.o: bench/bench_entities.c
+	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
+bench/bench_mixed_content.o: bench/bench_mixed_content.c
+	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
+bench/bench_stress_test.o: bench/bench_stress_test.c
+	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
+bench/bench_unicode_content.o: bench/bench_unicode_content.c
 	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
 
 %.o: %.c
