@@ -1,3 +1,4 @@
 *.o
 test-sparsexml
 bench/bench
+examples/simple
