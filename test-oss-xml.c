@@ -1,6 +1,8 @@
 #include <CUnit/CUnit.h>
 #include <CUnit/Basic.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "sparsexml.h"
 
@@ -100,25 +102,17 @@ static unsigned char atom_on_comment(char *comment) {
 
 void test_real_world_atom_feed(void) {
   SXMLExplorer* explorer;
-  // Real Atom feed example from W3C documentation
-  char xml[] = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
-               "<feed xmlns=\"http://www.w3.org/2005/Atom\">\n"
-               "  <title>Example Feed</title>\n"
-               "  <link href=\"http://example.org/\"/>\n"
-               "  <updated>2003-12-13T18:30:02Z</updated>\n"
-               "  <author>\n"
-               "    <name>John Doe</name>\n"
-               "  </author>\n"
-               "  <id>urn:uuid:60a76c80-d399-11d9-b93C-0003939e0af6</id>\n"
-               "  <!-- This is a comment -->\n"
-               "  <entry>\n"
-               "    <title>Atom-Powered Robots Run Amok</title>\n"
-               "    <link href=\"http://example.org/2003/12/13/atom03\"/>\n"
-               "    <id>urn:uuid:1225c695-cfb8-4ebb-aaaa-80da344efa6a</id>\n"
-               "    <updated>2003-12-13T18:30:02Z</updated>\n"
-               "    <summary>Some text &amp; more &quot;quoted&quot; content</summary>\n"
-               "  </entry>\n"
-               "</feed>";
+  // Real Atom feed example loaded from external file
+  FILE* f = fopen("test-oss-1.xml", "rb");
+  CU_ASSERT_PTR_NOT_NULL_FATAL(f);
+  fseek(f, 0, SEEK_END);
+  long size = ftell(f);
+  rewind(f);
+  char* xml = (char*)malloc(size + 1);
+  CU_ASSERT_PTR_NOT_NULL_FATAL(xml);
+  fread(xml, 1, size, f);
+  xml[size] = '\0';
+  fclose(f);
   
   // Reset counters
   atom_tag_count = 0;
@@ -139,8 +133,9 @@ void test_real_world_atom_feed(void) {
   CU_ASSERT(atom_content_count >= 5);  // Should parse content elements
   CU_ASSERT(atom_comment_count == 1);  // Should find the comment
   CU_ASSERT(atom_found_entities == 1);  // Should process entities
-  
+
   sxml_destroy_explorer(explorer);
+  free(xml);
 }
 
 // Global variables for test_complex_xml_with_cdata_and_entities
