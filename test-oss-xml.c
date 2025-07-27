@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #include "sparsexml.h"
 
@@ -262,52 +263,204 @@ void test_error_handling_with_malformed_xml(void) {
 }
 
 // Test for RSS feed
+static const char* rss_expected_tags[] = {
+    "rss","channel",
+    "title","/title","description","/description","link","/link",
+    "lastBuildDate","/lastBuildDate","pubDate","/pubDate","ttl","/ttl",
+    "item","title","/title","description","/description","link","/link",
+    "guid","/guid","pubDate","/pubDate","/item","/channel","/rss"
+};
+static const char* rss_expected_attr_keys[] = {"version","isPermaLink"};
+static const char* rss_expected_attr_vals[] = {"2.0","false"};
+static const char* rss_expected_content[] = {
+    "RSS Title",
+    "This is an example of an RSS feed",
+    "http://www.example.com/main.html",
+    "Mon, 06 Sep 2010 00:01:00 +0000 ",
+    "Sun, 06 Sep 2009 16:20:00 +0000",
+    "1800",
+    "Example entry",
+    "Here is some text containing an interesting description.",
+    "http://www.example.com/blog/post/1",
+    "7bd204c6-1655-4c27-aeee-53f933c5395f",
+    "Sun, 06 Sep 2009 16:20:00 +0000"
+};
+static unsigned int rss_tag_index = 0;
+static unsigned int rss_attr_index = 0;
+static unsigned int rss_content_index = 0;
+
+static unsigned char rss_on_tag(char* name) {
+    CU_ASSERT(rss_tag_index < sizeof(rss_expected_tags)/sizeof(rss_expected_tags[0]));
+    CU_ASSERT_STRING_EQUAL(name, rss_expected_tags[rss_tag_index]);
+    rss_tag_index++;
+    return SXMLExplorerContinue;
+}
+
+static unsigned char rss_on_attr_key(char* key) {
+    CU_ASSERT(rss_attr_index < sizeof(rss_expected_attr_keys)/sizeof(rss_expected_attr_keys[0]));
+    CU_ASSERT_STRING_EQUAL(key, rss_expected_attr_keys[rss_attr_index]);
+    return SXMLExplorerContinue;
+}
+
+static unsigned char rss_on_attr_val(char* val) {
+    CU_ASSERT_STRING_EQUAL(val, rss_expected_attr_vals[rss_attr_index]);
+    rss_attr_index++;
+    return SXMLExplorerContinue;
+}
+
+static unsigned char rss_on_content(char* content) {
+    while (*content && isspace((unsigned char)*content)) content++;
+    if (*content == '\0') return SXMLExplorerContinue;
+    CU_ASSERT(rss_content_index < sizeof(rss_expected_content)/sizeof(rss_expected_content[0]));
+    CU_ASSERT_STRING_EQUAL(content, rss_expected_content[rss_content_index]);
+    rss_content_index++;
+    return SXMLExplorerContinue;
+}
+
 void test_rss_feed(void) {
     SXMLExplorer* explorer = sxml_make_explorer();
     char* xml = read_file_to_string("test-data/test-rss.xml");
     CU_ASSERT_PTR_NOT_NULL_FATAL(xml);
 
+    rss_tag_index = rss_attr_index = rss_content_index = 0;
+    sxml_enable_entity_processing(explorer, 1);
+    sxml_register_func(explorer, rss_on_tag, rss_on_content,
+                       rss_on_attr_key, rss_on_attr_val);
+
     unsigned char result = sxml_run_explorer(explorer, xml);
     CU_ASSERT_EQUAL(result, SXMLExplorerComplete);
+    CU_ASSERT(rss_tag_index == sizeof(rss_expected_tags)/sizeof(rss_expected_tags[0]));
+    CU_ASSERT(rss_attr_index == sizeof(rss_expected_attr_keys)/sizeof(rss_expected_attr_keys[0]));
+    CU_ASSERT(rss_content_index == sizeof(rss_expected_content)/sizeof(rss_expected_content[0]));
 
     sxml_destroy_explorer(explorer);
     free(xml);
 }
 
 // Test for Atom entry
+static const char* atom_entry_expected_tags[] = {
+    "entry","title","/title","link","/","id","/id",
+    "updated","/updated","summary","/summary","/entry"
+};
+static const char* atom_entry_expected_attr_keys[] = {"xmlns","href"};
+static const char* atom_entry_expected_attr_vals[] = {
+    "http://www.w3.org/2005/Atom",
+    "http://example.org/2003/12/13/atom03"
+};
+static const char* atom_entry_expected_content[] = {
+    "Atom-Powered Robots Run Amok",
+    "urn:uuid:1225c695-cfb8-4ebb-aaaa-80da344efa6a",
+    "2003-12-13T18:30:02Z",
+    "Some text."
+};
+static unsigned int atom_entry_tag_index = 0;
+static unsigned int atom_entry_attr_index = 0;
+static unsigned int atom_entry_content_index = 0;
+
+static unsigned char atom_entry_on_tag(char* name) {
+    CU_ASSERT(atom_entry_tag_index < sizeof(atom_entry_expected_tags)/sizeof(atom_entry_expected_tags[0]));
+    CU_ASSERT_STRING_EQUAL(name, atom_entry_expected_tags[atom_entry_tag_index]);
+    atom_entry_tag_index++;
+    return SXMLExplorerContinue;
+}
+
+static unsigned char atom_entry_on_attr_key(char* key) {
+    CU_ASSERT(atom_entry_attr_index < sizeof(atom_entry_expected_attr_keys)/sizeof(atom_entry_expected_attr_keys[0]));
+    CU_ASSERT_STRING_EQUAL(key, atom_entry_expected_attr_keys[atom_entry_attr_index]);
+    return SXMLExplorerContinue;
+}
+
+static unsigned char atom_entry_on_attr_val(char* val) {
+    CU_ASSERT_STRING_EQUAL(val, atom_entry_expected_attr_vals[atom_entry_attr_index]);
+    atom_entry_attr_index++;
+    return SXMLExplorerContinue;
+}
+
+static unsigned char atom_entry_on_content(char* content) {
+    while (*content && isspace((unsigned char)*content)) content++;
+    if (*content == '\0') return SXMLExplorerContinue;
+    CU_ASSERT(atom_entry_content_index < sizeof(atom_entry_expected_content)/sizeof(atom_entry_expected_content[0]));
+    CU_ASSERT_STRING_EQUAL(content, atom_entry_expected_content[atom_entry_content_index]);
+    atom_entry_content_index++;
+    return SXMLExplorerContinue;
+}
+
 void test_atom_entry(void) {
     SXMLExplorer* explorer = sxml_make_explorer();
     char* xml = read_file_to_string("test-data/test-atom-entry.xml");
     CU_ASSERT_PTR_NOT_NULL_FATAL(xml);
 
+    atom_entry_tag_index = atom_entry_attr_index = atom_entry_content_index = 0;
+    sxml_enable_entity_processing(explorer, 1);
+    sxml_enable_namespace_processing(explorer, 1);
+    sxml_register_func(explorer, atom_entry_on_tag, atom_entry_on_content,
+                       atom_entry_on_attr_key, atom_entry_on_attr_val);
+
     unsigned char result = sxml_run_explorer(explorer, xml);
     CU_ASSERT_EQUAL(result, SXMLExplorerComplete);
+    CU_ASSERT(atom_entry_tag_index == sizeof(atom_entry_expected_tags)/sizeof(atom_entry_expected_tags[0]));
+    CU_ASSERT(atom_entry_attr_index == sizeof(atom_entry_expected_attr_keys)/sizeof(atom_entry_expected_attr_keys[0]));
+    CU_ASSERT(atom_entry_content_index == sizeof(atom_entry_expected_content)/sizeof(atom_entry_expected_content[0]));
 
     sxml_destroy_explorer(explorer);
     free(xml);
 }
 
 // Test for XML with comments
+static const char* comments_expected[] = {
+    " This is a comment ",
+    " This is another comment ",
+    " This is a nested comment "
+};
+static unsigned int comments_index = 0;
+
+static unsigned char comments_callback(char* text) {
+    CU_ASSERT(comments_index < sizeof(comments_expected)/sizeof(comments_expected[0]));
+    CU_ASSERT_STRING_EQUAL(text, comments_expected[comments_index]);
+    comments_index++;
+    return SXMLExplorerContinue;
+}
+
 void test_with_comments(void) {
     SXMLExplorer* explorer = sxml_make_explorer();
     char* xml = read_file_to_string("test-data/test-with-comments.xml");
     CU_ASSERT_PTR_NOT_NULL_FATAL(xml);
 
+    comments_index = 0;
+    sxml_register_func(explorer, NULL, NULL, NULL, NULL);
+    sxml_register_comment_func(explorer, comments_callback);
+
     unsigned char result = sxml_run_explorer(explorer, xml);
     CU_ASSERT_EQUAL(result, SXMLExplorerComplete);
+    CU_ASSERT(comments_index == sizeof(comments_expected)/sizeof(comments_expected[0]));
 
     sxml_destroy_explorer(explorer);
     free(xml);
 }
 
 // Test for XML with CDATA
+static unsigned int cdata_content_index = 0;
+static const char* cdata_expected = "This is some CDATA text with < and > characters.";
+static unsigned char cdata_on_content(char* c) {
+    while (*c && isspace((unsigned char)*c)) c++;
+    if (*c != '\0') {
+        CU_ASSERT_STRING_EQUAL(c, cdata_expected);
+        cdata_content_index++;
+    }
+    return SXMLExplorerContinue;
+}
+
 void test_with_cdata(void) {
     SXMLExplorer* explorer = sxml_make_explorer();
     char* xml = read_file_to_string("test-data/test-with-cdata.xml");
     CU_ASSERT_PTR_NOT_NULL_FATAL(xml);
 
+    cdata_content_index = 0;
+    sxml_register_func(explorer, NULL, cdata_on_content, NULL, NULL);
+
     unsigned char result = sxml_run_explorer(explorer, xml);
     CU_ASSERT_EQUAL(result, SXMLExplorerComplete);
+    CU_ASSERT(cdata_content_index == 1);
 
     sxml_destroy_explorer(explorer);
     free(xml);
