@@ -205,9 +205,23 @@ sxml_enable_extended_entities(explorer, 1);      // &copy;, &reg;, etc.
 ## Latest Updates (v2.2) - Experimental EXI Support
 This release introduces a very small EXI decoder capable of parsing a limited
 subset of EXI streams. The new API function `sxml_run_explorer_exi()` allows
-feeding binary EXI data directly into the explorer. Only start/end elements,
-attributes, character content, and comments are recognized. Full conformance to
+feeding binary EXI data directly into the explorer. Full conformance to
 the EXI specification is **not** implemented.
+
+The current EXI support is based on a custom binary format, not the official W3C EXI specification. It provides a subset of EXI features for resource-constrained environments.
+
+### Supported Features
+
+*   **Start Element:** `0x01`
+*   **End Element:** `0x02`
+*   **Attribute:** `0x03`
+*   **Characters:** `0x04`
+*   **Comment:** `0x05`
+*   **Namespace-prefixed Tag:** `0x06`
+
+### Known Issues
+
+*   The namespace implementation uses `sprintf`, which may cause buffer overflows with long URIs or local names. This is mitigated by length checks but will be replaced with a safer alternative in a future update.
 
 ## Future Enhancements
 Potential improvements for future versions:

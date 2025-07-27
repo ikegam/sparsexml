@@ -497,6 +497,35 @@ unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi,
           result = explorer->comment_func(comment);
         break;
       }
+      case 0x06: { // Namespace-prefixed tag
+        if (pos >= len) return SXMLExplorerErrorMalformedXML;
+        unsigned char uri_len = exi[pos++];
+        if (pos + uri_len > len || uri_len >= SXMLElementLength)
+          return SXMLExplorerErrorMalformedXML;
+        char uri[SXMLElementLength];
+        memcpy(uri, &exi[pos], uri_len);
+        uri[uri_len] = '\0';
+        pos += uri_len;
+
+        if (pos >= len) return SXMLExplorerErrorMalformedXML;
+        unsigned char local_name_len = exi[pos++];
+        if (pos + local_name_len > len || local_name_len >= SXMLElementLength)
+          return SXMLExplorerErrorMalformedXML;
+        char local_name[SXMLElementLength];
+        memcpy(local_name, &exi[pos], local_name_len);
+        local_name[local_name_len] = '\0';
+        pos += local_name_len;
+
+        if (uri_len + local_name_len + 1 < SXMLElementLength) {
+          char full_name[SXMLElementLength];
+          sprintf(full_name, "%s:%s", uri, local_name);
+          if (explorer->tag_func)
+            result = explorer->tag_func(full_name);
+        } else {
+          return SXMLExplorerErrorBufferOverflow;
+        }
+        break;
+      }
       case 0xFF:
         return SXMLExplorerComplete;
       default:
