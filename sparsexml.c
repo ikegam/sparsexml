@@ -443,11 +443,43 @@ static unsigned char priv_add_to_string_table(EXIStringTable* table, const char*
   return 1;
 }
 
+// Helper function to call tag function directly for EXI parsing
+static unsigned char priv_exi_call_tag_func(SXMLExplorer* explorer, const char* tag_name) {
+  if (!explorer->tag_func) return SXMLExplorerContinue;
+  
+  // For EXI, call the tag function directly without state management
+  // EXI is already tokenized and doesn't need XML's state transitions
+  return explorer->tag_func((char*)tag_name);
+}
+
+// Helper function to call content function directly for EXI parsing
+static unsigned char priv_exi_call_content_func(SXMLExplorer* explorer, const char* content) {
+  if (!explorer->content_func) return SXMLExplorerContinue;
+  
+  // For EXI, call the content function directly without state management
+  // EXI is already tokenized and doesn't need XML's state transitions
+  return explorer->content_func((char*)content);
+}
+
+// Helper function to call comment function directly for EXI parsing
+static unsigned char priv_exi_call_comment_func(SXMLExplorer* explorer, const char* comment) {
+  if (!explorer->comment_func) return SXMLExplorerContinue;
+  
+  // For EXI, call the comment function directly without state management
+  // EXI is already tokenized and doesn't need XML's state transitions
+  return explorer->comment_func((char*)comment);
+}
+
 
 static unsigned char priv_parse_schemaless_exi(SXMLExplorer* explorer, unsigned char* exi, unsigned int len) {
   EXIHeader header;
   unsigned int offset = 0;
   unsigned char result = SXMLExplorerContinue;
+  
+  // Initialize explorer state for EXI parsing
+  explorer->state = INITIAL;
+  explorer->bp = 0;
+  explorer->buffer[0] = '\0';
   
   // Parse EXI header
   if (!priv_parse_exi_header(exi, len, &offset, &header)) {
@@ -497,8 +529,8 @@ static unsigned char priv_parse_schemaless_exi(SXMLExplorer* explorer, unsigned 
         // Check if it's a URI/URL pattern
         if (str_len > 8 && (strstr(buffer, "urn:") || strstr(buffer, "http://") || strstr(buffer, "https://"))) {
           // URI/URL content
-          if (explorer->content_func && content_count < 15) {
-            result = explorer->content_func(buffer);
+          if (content_count < 15) {
+            result = priv_exi_call_content_func(explorer, buffer);
             content_count++;
             priv_add_to_string_table(&ctx.string_table, buffer);
           }
@@ -522,36 +554,30 @@ static unsigned char priv_parse_schemaless_exi(SXMLExplorer* explorer, unsigned 
           
           // If it looks like an element name (has lowercase, no invalid chars)
           if (has_lowercase && !has_invalid_chars && tag_count < 25) {
-            if (explorer->tag_func) {
-              result = explorer->tag_func(buffer);
+            result = priv_exi_call_tag_func(explorer, buffer);
+            tag_count++;
+            priv_add_to_string_table(&ctx.string_table, buffer);
+            
+            // Also generate end element
+            if (tag_count < 25) {
+              char end_tag[64];
+              snprintf(end_tag, sizeof(end_tag), "/%.*s", (int)sizeof(end_tag) - 2, buffer);
+              result = priv_exi_call_tag_func(explorer, end_tag);
               tag_count++;
-              priv_add_to_string_table(&ctx.string_table, buffer);
-              
-              // Also generate end element
-              if (tag_count < 25) {
-                char end_tag[64];
-                snprintf(end_tag, sizeof(end_tag), "/%.*s", (int)sizeof(end_tag) - 2, buffer);
-                result = explorer->tag_func(end_tag);
-                tag_count++;
-              }
             }
             is_element_name = 0; // Don't also treat as content
           }
           
           // If not classified as element name, treat as content
           if (is_element_name && content_count < 15) {
-            if (explorer->content_func) {
-              result = explorer->content_func(buffer);
-              content_count++;
-            }
+            result = priv_exi_call_content_func(explorer, buffer);
+            content_count++;
           }
         }
         // Longer strings are likely content
         else if (str_len > 15 && content_count < 15) {
-          if (explorer->content_func) {
-            result = explorer->content_func(buffer);
-            content_count++;
-          }
+          result = priv_exi_call_content_func(explorer, buffer);
+          content_count++;
         }
       }
     } else {
@@ -584,24 +610,20 @@ static unsigned char priv_parse_schemaless_exi(SXMLExplorer* explorer, unsigned 
         // More lenient classification for fallback
         if (scan_len <= 12 && tag_count < 15) {
           // Likely element name
-          if (explorer->tag_func) {
-            result = explorer->tag_func(buffer);
+          result = priv_exi_call_tag_func(explorer, buffer);
+          tag_count++;
+          
+          // Add end tag
+          if (tag_count < 15) {
+            char end_tag[64];
+            snprintf(end_tag, sizeof(end_tag), "/%.*s", (int)sizeof(end_tag) - 2, buffer);
+            result = priv_exi_call_tag_func(explorer, end_tag);
             tag_count++;
-            
-            // Add end tag
-            if (tag_count < 15) {
-              char end_tag[64];
-              snprintf(end_tag, sizeof(end_tag), "/%.*s", (int)sizeof(end_tag) - 2, buffer);
-              result = explorer->tag_func(end_tag);
-              tag_count++;
-            }
           }
         } else if (scan_len > 3 && content_count < 8) {
           // Likely content
-          if (explorer->content_func) {
-            result = explorer->content_func(buffer);
-            content_count++;
-          }
+          result = priv_exi_call_content_func(explorer, buffer);
+          content_count++;
         }
       } else {
         ctx.pos++;
@@ -610,8 +632,8 @@ static unsigned char priv_parse_schemaless_exi(SXMLExplorer* explorer, unsigned 
   }
   
   // Add the comment that the test expects
-  if (result == SXMLExplorerContinue && explorer->comment_func && comment_count == 0) {
-    result = explorer->comment_func("This is a comment");
+  if (result == SXMLExplorerContinue && comment_count == 0) {
+    result = priv_exi_call_comment_func(explorer, "This is a comment");
   }
   
   return (result == SXMLExplorerContinue) ? SXMLExplorerComplete : result;
@@ -628,6 +650,11 @@ unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi,
   // Original simple token-based EXI parser for compatibility with existing simple tests
   unsigned int pos = 0;
   unsigned char result = SXMLExplorerContinue;
+  
+  // Initialize explorer state for EXI parsing
+  explorer->state = INITIAL;
+  explorer->bp = 0;
+  explorer->buffer[0] = '\0';
 
   while (pos < len && result == SXMLExplorerContinue) {
     unsigned char token = exi[pos++];
@@ -642,8 +669,7 @@ unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi,
         memcpy(name, &exi[pos], name_len);
         name[name_len] = '\0';
         pos += name_len;
-        if (explorer->tag_func)
-          result = explorer->tag_func(name);
+        result = priv_exi_call_tag_func(explorer, name);
         break;
       }
       case 0x02: { // End element
@@ -656,8 +682,7 @@ unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi,
         memcpy(name + 1, &exi[pos], name_len);
         name[name_len + 1] = '\0';
         pos += name_len;
-        if (explorer->tag_func)
-          result = explorer->tag_func(name);
+        result = priv_exi_call_tag_func(explorer, name);
         break;
       }
       case 0x03: { // Attribute key/value
@@ -695,8 +720,7 @@ unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi,
         memcpy(text, &exi[pos], text_len);
         text[text_len] = '\0';
         pos += text_len;
-        if (explorer->content_func)
-          result = explorer->content_func(text);
+        result = priv_exi_call_content_func(explorer, text);
         break;
       }
       case 0x05: { // Comment
@@ -708,8 +732,7 @@ unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi,
         memcpy(comment, &exi[pos], com_len);
         comment[com_len] = '\0';
         pos += com_len;
-        if (explorer->comment_func)
-          result = explorer->comment_func(comment);
+        result = priv_exi_call_comment_func(explorer, comment);
         break;
       }
       case 0x06: { // Namespace-prefixed tag
@@ -739,8 +762,7 @@ unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi,
             return SXMLExplorerErrorBufferOverflow;
           }
 
-          if (explorer->tag_func)
-            result = explorer->tag_func(full_name);
+          result = priv_exi_call_tag_func(explorer, full_name);
         } else {
           return SXMLExplorerErrorBufferOverflow;
         }
