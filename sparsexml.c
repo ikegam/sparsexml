@@ -503,6 +503,32 @@ static unsigned char priv_exi_call_comment_func(SXMLExplorer* explorer, const ch
 }
 
 // =============================================================================
+// EXI SUPPORT: COMMON FUNCTIONS
+// =============================================================================
+
+static void priv_init_exi_explorer(SXMLExplorer* explorer) {
+  explorer->state = INITIAL;
+  explorer->bp = 0;
+  explorer->buffer[0] = '\0';
+}
+
+typedef enum {
+  EXI_FORMAT_SIMPLE_TOKEN,
+  EXI_FORMAT_SCHEMALESS,
+  EXI_FORMAT_INVALID
+} EXIFormat;
+
+static EXIFormat priv_detect_exi_format(unsigned char* exi, unsigned int len) {
+  if (len > 50 && (exi[0] == '$' || (exi[0] & 0xC0) == 0x80)) {
+    return EXI_FORMAT_SCHEMALESS;
+  }
+  if (len > 0) {
+    return EXI_FORMAT_SIMPLE_TOKEN;
+  }
+  return EXI_FORMAT_INVALID;
+}
+
+// =============================================================================
 // EXI SUPPORT: SCHEMA-LESS PARSER
 // =============================================================================
 
@@ -512,9 +538,7 @@ static unsigned char priv_parse_schemaless_exi(SXMLExplorer* explorer, unsigned 
   unsigned char result = SXMLExplorerContinue;
   
   // Initialize explorer state for EXI parsing
-  explorer->state = INITIAL;
-  explorer->bp = 0;
-  explorer->buffer[0] = '\0';
+  priv_init_exi_explorer(explorer);
   
   // Parse EXI header
   if (!priv_parse_exi_header(exi, len, &offset, &header)) {
@@ -675,25 +699,15 @@ static unsigned char priv_parse_schemaless_exi(SXMLExplorer* explorer, unsigned 
 }
 
 // =============================================================================
-// EXI SUPPORT: MAIN PARSER
+// EXI SUPPORT: SIMPLE TOKEN PARSER
 // =============================================================================
 
-unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi,
-                                    unsigned int len) {
-  // Detect EXI format: Real EXI vs Simple token-based
-  if (len > 50 && (exi[0] == '$' || (exi[0] & 0xC0) == 0x80)) {
-    // Real EXI format detected - assume schema-less mode
-    return priv_parse_schemaless_exi(explorer, exi, len);
-  }
-  
-  // Original simple token-based EXI parser for compatibility with existing simple tests
+static unsigned char priv_parse_simple_token_exi(SXMLExplorer* explorer, unsigned char* exi, unsigned int len) {
   unsigned int pos = 0;
   unsigned char result = SXMLExplorerContinue;
   
   // Initialize explorer state for EXI parsing
-  explorer->state = INITIAL;
-  explorer->bp = 0;
-  explorer->buffer[0] = '\0';
+  priv_init_exi_explorer(explorer);
 
   while (pos < len && result == SXMLExplorerContinue) {
     unsigned char token = exi[pos++];
@@ -815,4 +829,21 @@ unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi,
   }
 
   return result == SXMLExplorerStop ? SXMLExplorerInterrupted : SXMLExplorerComplete;
+}
+
+// =============================================================================
+// EXI SUPPORT: MAIN PARSER
+// =============================================================================
+
+unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi, unsigned int len) {
+  EXIFormat format = priv_detect_exi_format(exi, len);
+  
+  switch (format) {
+    case EXI_FORMAT_SCHEMALESS:
+      return priv_parse_schemaless_exi(explorer, exi, len);
+    case EXI_FORMAT_SIMPLE_TOKEN:
+      return priv_parse_simple_token_exi(explorer, exi, len);
+    default:
+      return SXMLExplorerErrorMalformedXML;
+  }
 }
