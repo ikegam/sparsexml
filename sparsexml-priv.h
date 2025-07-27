@@ -8,13 +8,9 @@ struct __SXMLExplorer {
 
   char buffer[SXMLElementLength];
   unsigned int bp;
-  unsigned char header_parsed;
-  unsigned int comment_depth;  // For nested comment detection
-  unsigned int cdata_pos;      // Position counter for CDATA detection
   SXMLExplorerState prev_state; // Previous state for entity processing
   char entity_buffer[32];      // Temporary buffer for entity processing
   unsigned int entity_bp;      // Buffer pointer for entity processing
-  unsigned int saved_bp;       // Saved buffer position before entity processing
   unsigned char enable_entity_processing; // Flag to enable/disable entity processing
   unsigned char enable_namespace_processing; // Flag to enable/disable namespace processing
   unsigned char enable_extended_entities; // Flag to enable/disable extended HTML entities
