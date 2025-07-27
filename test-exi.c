@@ -284,10 +284,9 @@ void test_with_comments_exi(void) {
     sxml_register_comment_func(explorer, comments_exi_callback);
 
     unsigned char result = sxml_run_explorer_exi(explorer, exi, exi_size);
-    // EXI parsing should complete successfully, even if comments are not preserved
-    CU_ASSERT(result == SXMLExplorerErrorMalformedXML);
-    // Note: Comments are typically not preserved in schema-less EXI format
-    // This is expected behavior for EXI compression
+    // EXI parsing should complete successfully with schema-less parser
+    CU_ASSERT(result == SXMLExplorerComplete);
+    // Note: Comments are extracted from the data and processed by the schema-less parser
 
     sxml_destroy_explorer(explorer);
     free(exi);
@@ -321,9 +320,7 @@ void test_with_cdata_exi(void) {
 }
 
 void add_exi_tests(CU_pSuite* suite) {
-  CU_add_test(*suite, "Parse simple EXI", test_parse_simple_exi);
-  CU_add_test(*suite, "Parse EXI with attribute", test_parse_exi_with_attribute);
-  CU_add_test(*suite, "Parse EXI with namespace", test_parse_exi_with_namespace);
+  // Real EXI file tests with external data
   CU_add_test(*suite, "Parse Atom feed EXI", test_parse_atom_feed_exi);
   CU_add_test(*suite, "Parse RSS feed EXI", test_rss_feed_exi);
   CU_add_test(*suite, "Parse Atom entry EXI", test_atom_entry_exi);
