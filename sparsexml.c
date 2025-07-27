@@ -5,6 +5,10 @@
 
 #include "sparsexml-priv.h"
 
+// =============================================================================
+// BASIC UTILITY FUNCTIONS
+// =============================================================================
+
 // Helper to append a single character to the buffer
 unsigned char priv_append_char(SXMLExplorer* explorer, char c) {
   if (explorer->bp < SXMLElementLength - 1) {
@@ -27,42 +31,9 @@ unsigned char priv_append_string(SXMLExplorer* explorer, const char* str) {
   return SXMLExplorerErrorBufferOverflow;
 }
 
-unsigned char priv_sxml_change_explorer_state(SXMLExplorer* explorer, SXMLExplorerState state) {
-  unsigned char ret = SXMLExplorerContinue;
-
-  if (explorer->bp > 0) {
-    if (explorer->state == IN_TAG && (state == IN_CONTENT || state == IN_TAG || state == IN_ATTRIBUTE_KEY) && explorer->tag_func != NULL) {
-      if (explorer->enable_namespace_processing) {
-        char* namespace_uri = NULL;
-        char* local_name = NULL;
-        char tag_copy[SXMLElementLength];
-        strcpy(tag_copy, explorer->buffer);
-        priv_sxml_process_namespace(tag_copy, &namespace_uri, &local_name);
-        // For simplicity, we pass the local name for now
-        ret = explorer->tag_func(local_name ? local_name : explorer->buffer);
-      } else {
-        ret = explorer->tag_func(explorer->buffer);
-      }
-    } else if (explorer->state == IN_CONTENT && state == IN_TAG && explorer->content_func != NULL) {
-      ret = explorer->content_func(explorer->buffer);
-    } else if (explorer->state == IN_ATTRIBUTE_KEY && state == IN_ATTRIBUTE_VALUE && explorer->attribute_key_func != NULL) {
-      ret = explorer->attribute_key_func(explorer->buffer);
-    } else if (explorer->state == IN_ATTRIBUTE_VALUE && state == IN_TAG && explorer->attribute_value_func != NULL) {
-      ret = explorer->attribute_value_func(explorer->buffer);
-    } else if (explorer->state == IN_COMMENT && state == IN_CONTENT && explorer->comment_func != NULL) {
-      ret = explorer->comment_func(explorer->buffer);
-    } else if (explorer->state == IN_CDATA && state == IN_CONTENT && explorer->content_func != NULL) {
-      ret = explorer->content_func(explorer->buffer);
-    }
-  }
-
-  explorer->bp = 0;
-  explorer->buffer[0] = '\0';
-
-  explorer->state = state;
-
-  return ret;
-}
+// =============================================================================
+// EXPLORER LIFECYCLE MANAGEMENT
+// =============================================================================
 
 SXMLExplorer* sxml_make_explorer(void) {
   SXMLExplorer* explorer;
@@ -113,6 +84,26 @@ void sxml_enable_extended_entities(SXMLExplorer* explorer, unsigned char enable)
 void sxml_enable_numeric_entities(SXMLExplorer* explorer, unsigned char enable) {
   explorer->enable_numeric_entities = enable;
 }
+
+// =============================================================================
+// XML PARSING: NAMESPACE PROCESSING
+// =============================================================================
+
+void priv_sxml_process_namespace(char* tag_name, char** namespace_uri, char** local_name) {
+  char* colon_pos = strchr(tag_name, ':');
+  if (colon_pos != NULL) {
+    *colon_pos = '\0';  // Split the string
+    *namespace_uri = tag_name;
+    *local_name = colon_pos + 1;
+  } else {
+    *namespace_uri = NULL;
+    *local_name = tag_name;
+  }
+}
+
+// =============================================================================
+// XML PARSING: ENTITY PROCESSING
+// =============================================================================
 
 unsigned char priv_sxml_process_entity(SXMLExplorer* explorer, char* entity_buffer) {
   char replacement = '\0';
@@ -194,17 +185,50 @@ unsigned char priv_sxml_process_extended_entity(SXMLExplorer* explorer, char* en
   return SXMLExplorerContinue;
 }
 
-void priv_sxml_process_namespace(char* tag_name, char** namespace_uri, char** local_name) {
-  char* colon_pos = strchr(tag_name, ':');
-  if (colon_pos != NULL) {
-    *colon_pos = '\0';  // Split the string
-    *namespace_uri = tag_name;
-    *local_name = colon_pos + 1;
-  } else {
-    *namespace_uri = NULL;
-    *local_name = tag_name;
+// =============================================================================
+// XML PARSING: STATE MANAGEMENT
+// =============================================================================
+
+unsigned char priv_sxml_change_explorer_state(SXMLExplorer* explorer, SXMLExplorerState state) {
+  unsigned char ret = SXMLExplorerContinue;
+
+  if (explorer->bp > 0) {
+    if (explorer->state == IN_TAG && (state == IN_CONTENT || state == IN_TAG || state == IN_ATTRIBUTE_KEY) && explorer->tag_func != NULL) {
+      if (explorer->enable_namespace_processing) {
+        char* namespace_uri = NULL;
+        char* local_name = NULL;
+        char tag_copy[SXMLElementLength];
+        strcpy(tag_copy, explorer->buffer);
+        priv_sxml_process_namespace(tag_copy, &namespace_uri, &local_name);
+        // For simplicity, we pass the local name for now
+        ret = explorer->tag_func(local_name ? local_name : explorer->buffer);
+      } else {
+        ret = explorer->tag_func(explorer->buffer);
+      }
+    } else if (explorer->state == IN_CONTENT && state == IN_TAG && explorer->content_func != NULL) {
+      ret = explorer->content_func(explorer->buffer);
+    } else if (explorer->state == IN_ATTRIBUTE_KEY && state == IN_ATTRIBUTE_VALUE && explorer->attribute_key_func != NULL) {
+      ret = explorer->attribute_key_func(explorer->buffer);
+    } else if (explorer->state == IN_ATTRIBUTE_VALUE && state == IN_TAG && explorer->attribute_value_func != NULL) {
+      ret = explorer->attribute_value_func(explorer->buffer);
+    } else if (explorer->state == IN_COMMENT && state == IN_CONTENT && explorer->comment_func != NULL) {
+      ret = explorer->comment_func(explorer->buffer);
+    } else if (explorer->state == IN_CDATA && state == IN_CONTENT && explorer->content_func != NULL) {
+      ret = explorer->content_func(explorer->buffer);
+    }
   }
+
+  explorer->bp = 0;
+  explorer->buffer[0] = '\0';
+
+  explorer->state = state;
+
+  return ret;
 }
+
+// =============================================================================
+// XML MAIN PARSER
+// =============================================================================
 
 unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
 
@@ -379,6 +403,10 @@ unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
 
 }
 
+// =============================================================================
+// EXI SUPPORT: DATA STRUCTURES
+// =============================================================================
+
 // Basic EXI string table for embedded implementation
 typedef struct {
   char strings[32][64]; // Limited string table: 32 entries, 64 bytes each
@@ -401,6 +429,10 @@ typedef struct {
   unsigned char has_options;
   unsigned char schema_informed;
 } EXIHeader;
+
+// =============================================================================
+// EXI SUPPORT: HELPER FUNCTIONS
+// =============================================================================
 
 static unsigned char priv_parse_exi_header(unsigned char* exi, unsigned int len, unsigned int* offset, EXIHeader* header) {
   if (len < 2) return 0;
@@ -470,6 +502,9 @@ static unsigned char priv_exi_call_comment_func(SXMLExplorer* explorer, const ch
   return explorer->comment_func((char*)comment);
 }
 
+// =============================================================================
+// EXI SUPPORT: SCHEMA-LESS PARSER
+// =============================================================================
 
 static unsigned char priv_parse_schemaless_exi(SXMLExplorer* explorer, unsigned char* exi, unsigned int len) {
   EXIHeader header;
@@ -639,6 +674,10 @@ static unsigned char priv_parse_schemaless_exi(SXMLExplorer* explorer, unsigned 
   return (result == SXMLExplorerContinue) ? SXMLExplorerComplete : result;
 }
 
+// =============================================================================
+// EXI SUPPORT: MAIN PARSER
+// =============================================================================
+
 unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi,
                                     unsigned int len) {
   // Detect EXI format: Real EXI vs Simple token-based
@@ -777,4 +816,3 @@ unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi,
 
   return result == SXMLExplorerStop ? SXMLExplorerInterrupted : SXMLExplorerComplete;
 }
-
