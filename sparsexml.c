@@ -6,6 +6,28 @@
 
 #include "sparsexml-priv.h"
 
+// Helper to append a single character to the buffer
+unsigned char priv_append_char(SXMLExplorer* explorer, char c) {
+  if (explorer->bp < SXMLElementLength - 1) {
+    explorer->buffer[explorer->bp++] = c;
+    explorer->buffer[explorer->bp] = '\0';
+    return SXMLExplorerContinue;
+  }
+  return SXMLExplorerErrorBufferOverflow;
+}
+
+// Helper to append a string to the buffer
+unsigned char priv_append_string(SXMLExplorer* explorer, const char* str) {
+  unsigned int len = strlen(str);
+  if (explorer->bp + len < SXMLElementLength) {
+    memcpy(explorer->buffer + explorer->bp, str, len);
+    explorer->bp += len;
+    explorer->buffer[explorer->bp] = '\0';
+    return SXMLExplorerContinue;
+  }
+  return SXMLExplorerErrorBufferOverflow;
+}
+
 unsigned char priv_sxml_change_explorer_state(SXMLExplorer* explorer, SXMLExplorerState state) {
   unsigned char ret = SXMLExplorerContinue;
 
@@ -126,15 +148,8 @@ unsigned char priv_sxml_process_entity(SXMLExplorer* explorer, char* entity_buff
     }
     return SXMLExplorerErrorInvalidEntity;
   }
-  
-  if (explorer->bp < SXMLElementLength - 1) {
-    explorer->buffer[explorer->bp++] = replacement;
-    explorer->buffer[explorer->bp] = '\0';
-  } else {
-    return SXMLExplorerErrorBufferOverflow;
-  }
-  
-  return SXMLExplorerContinue;
+
+  return priv_append_char(explorer, replacement);
 }
 
 unsigned char priv_sxml_process_numeric_entity(SXMLExplorer* explorer, char* entity_buffer) {
@@ -154,14 +169,7 @@ unsigned char priv_sxml_process_numeric_entity(SXMLExplorer* explorer, char* ent
     return SXMLExplorerErrorInvalidEntity;
   }
   
-  if (explorer->bp < SXMLElementLength - 1) {
-    explorer->buffer[explorer->bp++] = (char)codepoint;
-    explorer->buffer[explorer->bp] = '\0';
-  } else {
-    return SXMLExplorerErrorBufferOverflow;
-  }
-  
-  return SXMLExplorerContinue;
+  return priv_append_char(explorer, (char)codepoint);
 }
 
 unsigned char priv_sxml_process_extended_entity(SXMLExplorer* explorer, char* entity_buffer) {
@@ -173,34 +181,13 @@ unsigned char priv_sxml_process_extended_entity(SXMLExplorer* explorer, char* en
   } else if (strcmp(entity_buffer, "copy") == 0) {
     // For embedded systems, replace with simple text
     const char* copyright_text = "(c)";
-    int len = strlen(copyright_text);
-    if (explorer->bp + len < SXMLElementLength) {
-      strcpy(explorer->buffer + explorer->bp, copyright_text);
-      explorer->bp += len;
-      return SXMLExplorerContinue;
-    } else {
-      return SXMLExplorerErrorBufferOverflow;
-    }
+    return priv_append_string(explorer, copyright_text);
   } else if (strcmp(entity_buffer, "reg") == 0) {
     const char* reg_text = "(R)";
-    int len = strlen(reg_text);
-    if (explorer->bp + len < SXMLElementLength) {
-      strcpy(explorer->buffer + explorer->bp, reg_text);
-      explorer->bp += len;
-      return SXMLExplorerContinue;
-    } else {
-      return SXMLExplorerErrorBufferOverflow;
-    }
+    return priv_append_string(explorer, reg_text);
   } else if (strcmp(entity_buffer, "trade") == 0) {
     const char* trade_text = "(TM)";
-    int len = strlen(trade_text);
-    if (explorer->bp + len < SXMLElementLength) {
-      strcpy(explorer->buffer + explorer->bp, trade_text);
-      explorer->bp += len;
-      return SXMLExplorerContinue;
-    } else {
-      return SXMLExplorerErrorBufferOverflow;
-    }
+    return priv_append_string(explorer, trade_text);
   } else if (strcmp(entity_buffer, "euro") == 0) {
     replacement = 'E';  // Euro symbol -> E for ASCII compatibility
   } else if (strcmp(entity_buffer, "pound") == 0) {
@@ -210,14 +197,9 @@ unsigned char priv_sxml_process_extended_entity(SXMLExplorer* explorer, char* en
   }
   
   if (replacement != '\0') {
-    if (explorer->bp < SXMLElementLength - 1) {
-      explorer->buffer[explorer->bp++] = replacement;
-      explorer->buffer[explorer->bp] = '\0';
-    } else {
-      return SXMLExplorerErrorBufferOverflow;
-    }
+    return priv_append_char(explorer, replacement);
   }
-  
+
   return SXMLExplorerContinue;
 }
 
