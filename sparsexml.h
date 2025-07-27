@@ -43,5 +43,6 @@ void sxml_enable_extended_entities(SXMLExplorer*, unsigned char);
 void sxml_enable_numeric_entities(SXMLExplorer*, unsigned char);
 
 unsigned char sxml_run_explorer(SXMLExplorer*, char*);
+unsigned char sxml_run_explorer_exi(SXMLExplorer*, unsigned char*, unsigned int);
 
 #endif

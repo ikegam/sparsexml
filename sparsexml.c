@@ -409,3 +409,101 @@ unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
 
 }
 
+unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi,
+                                    unsigned int len) {
+  unsigned int pos = 0;
+  unsigned char result = SXMLExplorerContinue;
+
+  while (pos < len && result == SXMLExplorerContinue) {
+    unsigned char token = exi[pos++];
+
+    switch (token) {
+      case 0x01: { // Start element
+        if (pos >= len) return SXMLExplorerErrorMalformedXML;
+        unsigned char name_len = exi[pos++];
+        if (pos + name_len > len || name_len >= SXMLElementLength)
+          return SXMLExplorerErrorMalformedXML;
+        char name[SXMLElementLength];
+        memcpy(name, &exi[pos], name_len);
+        name[name_len] = '\0';
+        pos += name_len;
+        if (explorer->tag_func)
+          result = explorer->tag_func(name);
+        break;
+      }
+      case 0x02: { // End element
+        if (pos >= len) return SXMLExplorerErrorMalformedXML;
+        unsigned char name_len = exi[pos++];
+        if (pos + name_len > len || name_len >= SXMLElementLength - 1)
+          return SXMLExplorerErrorMalformedXML;
+        char name[SXMLElementLength];
+        name[0] = '/';
+        memcpy(name + 1, &exi[pos], name_len);
+        name[name_len + 1] = '\0';
+        pos += name_len;
+        if (explorer->tag_func)
+          result = explorer->tag_func(name);
+        break;
+      }
+      case 0x03: { // Attribute key/value
+        if (pos >= len) return SXMLExplorerErrorMalformedXML;
+        unsigned char key_len = exi[pos++];
+        if (pos + key_len > len || key_len >= SXMLElementLength)
+          return SXMLExplorerErrorMalformedXML;
+        char key[SXMLElementLength];
+        memcpy(key, &exi[pos], key_len);
+        key[key_len] = '\0';
+        pos += key_len;
+
+        if (pos >= len) return SXMLExplorerErrorMalformedXML;
+        unsigned char val_len = exi[pos++];
+        if (pos + val_len > len || val_len >= SXMLElementLength)
+          return SXMLExplorerErrorMalformedXML;
+        char value[SXMLElementLength];
+        memcpy(value, &exi[pos], val_len);
+        value[val_len] = '\0';
+        pos += val_len;
+
+        if (explorer->attribute_key_func)
+          result = explorer->attribute_key_func(key);
+        if (result != SXMLExplorerContinue) break;
+        if (explorer->attribute_value_func)
+          result = explorer->attribute_value_func(value);
+        break;
+      }
+      case 0x04: { // Characters
+        if (pos >= len) return SXMLExplorerErrorMalformedXML;
+        unsigned char text_len = exi[pos++];
+        if (pos + text_len > len || text_len >= SXMLElementLength)
+          return SXMLExplorerErrorMalformedXML;
+        char text[SXMLElementLength];
+        memcpy(text, &exi[pos], text_len);
+        text[text_len] = '\0';
+        pos += text_len;
+        if (explorer->content_func)
+          result = explorer->content_func(text);
+        break;
+      }
+      case 0x05: { // Comment
+        if (pos >= len) return SXMLExplorerErrorMalformedXML;
+        unsigned char com_len = exi[pos++];
+        if (pos + com_len > len || com_len >= SXMLElementLength)
+          return SXMLExplorerErrorMalformedXML;
+        char comment[SXMLElementLength];
+        memcpy(comment, &exi[pos], com_len);
+        comment[com_len] = '\0';
+        pos += com_len;
+        if (explorer->comment_func)
+          result = explorer->comment_func(comment);
+        break;
+      }
+      case 0xFF:
+        return SXMLExplorerComplete;
+      default:
+        return SXMLExplorerErrorMalformedXML;
+    }
+  }
+
+  return result == SXMLExplorerStop ? SXMLExplorerInterrupted : SXMLExplorerComplete;
+}
+

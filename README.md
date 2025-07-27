@@ -11,6 +11,7 @@ The library implements a SAX-like streaming parser that generates events for XML
 - **Streaming Support**: Can process XML data in chunks for large documents
 - **Embedded-Friendly**: Written in C with minimal dependencies
 - **Simple API**: Easy-to-use callback-based interface
+- **Experimental EXI support**: Parse a limited subset of EXI binary streams
 
 ## File Overview
 This repository contains example programs and a set of tests, but the actual
@@ -42,6 +43,9 @@ void sxml_enable_namespace_processing(SXMLExplorer* explorer, unsigned char enab
 void sxml_enable_extended_entities(SXMLExplorer* explorer, unsigned char enable);
 void sxml_enable_numeric_entities(SXMLExplorer* explorer, unsigned char enable);
 unsigned char sxml_run_explorer(SXMLExplorer* explorer, char* xml);
+unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer,
+                                    unsigned char* exi,
+                                    unsigned int len);
 ```
 
 ### Callback Function Signatures
@@ -197,6 +201,13 @@ sxml_enable_extended_entities(explorer, 1);      // &copy;, &reg;, etc.
 - **Numeric Decimal**: `&#65;` → `A`, `&#32;` → space
 - **Numeric Hexadecimal**: `&#x41;` → `A`, `&#x20;` → space
 - **Extended HTML**: `&copy;` → `(c)`, `&reg;` → `(R)`, `&trade;` → `(TM)`, `&nbsp;` → space, `&euro;` → `E`, `&pound;` → `#`
+
+## Latest Updates (v2.2) - Experimental EXI Support
+This release introduces a very small EXI decoder capable of parsing a limited
+subset of EXI streams. The new API function `sxml_run_explorer_exi()` allows
+feeding binary EXI data directly into the explorer. Only start/end elements,
+attributes, character content, and comments are recognized. Full conformance to
+the EXI specification is **not** implemented.
 
 ## Future Enhancements
 Potential improvements for future versions:
