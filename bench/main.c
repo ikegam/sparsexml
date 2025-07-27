@@ -10,6 +10,7 @@ int bench_entities_main(int argc, char **argv);
 int bench_mixed_main(int argc, char **argv);
 int bench_stress_main(int argc, char **argv);
 int bench_unicode_main(int argc, char **argv);
+int bench_exi_main(int argc, char **argv);
 
 int main(int argc, char **argv){
     (void)argc; (void)argv;
@@ -23,5 +24,6 @@ int main(int argc, char **argv){
     bench_mixed_main(argc, argv);
     bench_unicode_main(argc, argv);
     bench_stress_main(argc, argv);
+    bench_exi_main(argc, argv);
     return 0;
 }
