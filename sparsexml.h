@@ -12,12 +12,6 @@
 
 #define SXMLElementLength 1024
 
-typedef enum __SXMLExplorerWhereIs {
-  ON_NORMAL,
-  ON_DECLARATION,
-  ON_COMMENT
-} SXMLExplorerWhereIs;
-
 typedef enum __SXMLExplorerState {
   INITIAL,
   IN_DECLARATION,

@@ -65,10 +65,6 @@ unsigned char priv_sxml_change_explorer_state(SXMLExplorer* explorer, SXMLExplor
   return ret;
 }
 
-SXMLExplorerState sxml_check_explorer_state(SXMLExplorer* ex) {
-  return ex->state;
-}
-
 SXMLExplorer* sxml_make_explorer(void) {
   SXMLExplorer* explorer;
   explorer = malloc(sizeof(SXMLExplorer));
@@ -76,14 +72,10 @@ SXMLExplorer* sxml_make_explorer(void) {
   explorer->state = INITIAL;
   explorer->bp = 0;
   explorer->buffer[0] = '\0';
-  explorer->header_parsed = 0;
-  explorer->comment_depth = 0;
-  explorer->cdata_pos = 0;
   explorer->comment_func = NULL;
   explorer->prev_state = INITIAL;
   explorer->entity_bp = 0;
   explorer->entity_buffer[0] = '\0';
-  explorer->saved_bp = 0;
   explorer->enable_entity_processing = 0;
   explorer->enable_namespace_processing = 0;
   explorer->enable_extended_entities = 0;
@@ -221,9 +213,6 @@ unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
 
   do {
 
-#ifdef  __DEBUG1
-    printf("State:%d Buffer:%s CharAddr: %p Char:%c, result %d, length %d\r\n", explorer->state, explorer->buffer, xml, *xml, result, len);
-#endif
 
     switch (explorer->state) {
       case INITIAL:
@@ -444,89 +433,6 @@ static unsigned char priv_parse_exi_header(unsigned char* exi, unsigned int len,
   }
   
   return 0;
-}
-
-static unsigned char priv_read_exi_uint_old(unsigned char* exi, unsigned int len, unsigned int* offset) {
-  if (*offset >= len) return 0;
-  
-  unsigned char value = 0;
-  unsigned char byte = exi[(*offset)++];
-  
-  // Simple implementation: assume values fit in single byte for now
-  if (byte & 0x80) {
-    // Multi-byte integer - simplified for embedded use
-    value = byte & 0x7F;
-    if (*offset < len) {
-      value |= (exi[(*offset)++] & 0x7F) << 7;
-    }
-  } else {
-    value = byte;
-  }
-  
-  return value;
-}
-
-// EXI bit reading functions
-static unsigned int priv_read_exi_bits(EXIContext* ctx, unsigned int num_bits) {
-  unsigned int result = 0;
-  
-  for (unsigned int i = 0; i < num_bits; i++) {
-    if (ctx->pos >= ctx->len) return 0;
-    
-    unsigned char byte = ctx->data[ctx->pos];
-    unsigned char bit = (byte >> (7 - ctx->bit_pos)) & 1;
-    result = (result << 1) | bit;
-    
-    ctx->bit_pos++;
-    if (ctx->bit_pos >= 8) {
-      ctx->bit_pos = 0;
-      ctx->pos++;
-    }
-  }
-  
-  return result;
-}
-
-static unsigned int priv_read_exi_uint(EXIContext* ctx) {
-  unsigned int result = 0;
-  unsigned int shift = 0;
-  unsigned char byte;
-  
-  do {
-    if (ctx->pos >= ctx->len) return 0;
-    
-    // Align to byte boundary for simplicity
-    if (ctx->bit_pos != 0) {
-      ctx->bit_pos = 0;
-      ctx->pos++;
-    }
-    
-    byte = ctx->data[ctx->pos++];
-    result |= ((unsigned int)(byte & 0x7F)) << shift;
-    shift += 7;
-  } while (byte & 0x80);
-  
-  return result;
-}
-
-static unsigned char priv_read_exi_string(EXIContext* ctx, char* buffer, unsigned int buffer_size) {
-  unsigned int len = priv_read_exi_uint(ctx);
-  
-  if (len == 0 || len >= buffer_size || ctx->pos + len > ctx->len) {
-    return 0;
-  }
-  
-  // Align to byte boundary
-  if (ctx->bit_pos != 0) {
-    ctx->bit_pos = 0;
-    ctx->pos++;
-  }
-  
-  memcpy(buffer, &ctx->data[ctx->pos], len);
-  buffer[len] = '\0';
-  ctx->pos += len;
-  
-  return 1;
 }
 
 static unsigned char priv_add_to_string_table(EXIStringTable* table, const char* str) {
