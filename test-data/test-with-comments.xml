@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This is a comment -->
+<root>
+  <!-- This is another comment -->
+  <element>
+    <!-- This is a nested comment -->
+  </element>
+</root>

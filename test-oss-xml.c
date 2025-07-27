@@ -32,27 +32,28 @@ static unsigned char sitemap_on_content(char *content) {
   return SXMLExplorerContinue;
 }
 
+// Helper function to read a file into a string
+static char* read_file_to_string(const char* filename) {
+    FILE* f = fopen(filename, "rb");
+    if (!f) return NULL;
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    rewind(f);
+    char* str = (char*)malloc(size + 1);
+    if (!str) {
+        fclose(f);
+        return NULL;
+    }
+    fread(str, 1, size, f);
+    str[size] = '\0';
+    fclose(f);
+    return str;
+}
+
 void test_real_world_xml_sitemap(void) {
   SXMLExplorer* explorer;
-  // Real XML sitemap example from sitemaps.org
-  char xml[] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-               "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n"
-               "   <url>\n"
-               "      <loc>http://www.example.com/</loc>\n"
-               "      <lastmod>2005-01-01</lastmod>\n"
-               "      <changefreq>monthly</changefreq>\n"
-               "      <priority>0.8</priority>\n"
-               "   </url>\n"
-               "   <url>\n"
-               "      <loc>http://www.example.com/catalog?item=12&amp;desc=vacation_hawaii</loc>\n"
-               "      <changefreq>weekly</changefreq>\n"
-               "   </url>\n"
-               "   <url>\n"
-               "      <loc>http://www.example.com/catalog?item=73&amp;desc=vacation_new_zealand</loc>\n"
-               "      <lastmod>2004-12-23</lastmod>\n"
-               "      <changefreq>weekly</changefreq>\n"
-               "   </url>\n"
-               "</urlset>";
+  char* xml = read_file_to_string("test-data/test-sitemap.xml");
+  CU_ASSERT_PTR_NOT_NULL_FATAL(xml);
   
   // Reset counters
   sitemap_tag_count = 0;
@@ -72,6 +73,7 @@ void test_real_world_xml_sitemap(void) {
   CU_ASSERT(sitemap_found_namespace == 1);  // Should handle namespace
   
   sxml_destroy_explorer(explorer);
+  free(xml);
 }
 
 // Global variables for test_real_world_atom_feed
@@ -103,7 +105,7 @@ static unsigned char atom_on_comment(char *comment) {
 void test_real_world_atom_feed(void) {
   SXMLExplorer* explorer;
   // Real Atom feed example loaded from external file
-  FILE* f = fopen("test-oss-1.xml", "rb");
+  FILE* f = fopen("test-data/test-oss-1.xml", "rb");
   CU_ASSERT_PTR_NOT_NULL_FATAL(f);
   fseek(f, 0, SEEK_END);
   long size = ftell(f);
@@ -259,9 +261,65 @@ void test_error_handling_with_malformed_xml(void) {
   sxml_destroy_explorer(explorer);
 }
 
+// Test for RSS feed
+void test_rss_feed(void) {
+    SXMLExplorer* explorer = sxml_make_explorer();
+    char* xml = read_file_to_string("test-data/test-rss.xml");
+    CU_ASSERT_PTR_NOT_NULL_FATAL(xml);
+
+    unsigned char result = sxml_run_explorer(explorer, xml);
+    CU_ASSERT_EQUAL(result, SXMLExplorerComplete);
+
+    sxml_destroy_explorer(explorer);
+    free(xml);
+}
+
+// Test for Atom entry
+void test_atom_entry(void) {
+    SXMLExplorer* explorer = sxml_make_explorer();
+    char* xml = read_file_to_string("test-data/test-atom-entry.xml");
+    CU_ASSERT_PTR_NOT_NULL_FATAL(xml);
+
+    unsigned char result = sxml_run_explorer(explorer, xml);
+    CU_ASSERT_EQUAL(result, SXMLExplorerComplete);
+
+    sxml_destroy_explorer(explorer);
+    free(xml);
+}
+
+// Test for XML with comments
+void test_with_comments(void) {
+    SXMLExplorer* explorer = sxml_make_explorer();
+    char* xml = read_file_to_string("test-data/test-with-comments.xml");
+    CU_ASSERT_PTR_NOT_NULL_FATAL(xml);
+
+    unsigned char result = sxml_run_explorer(explorer, xml);
+    CU_ASSERT_EQUAL(result, SXMLExplorerComplete);
+
+    sxml_destroy_explorer(explorer);
+    free(xml);
+}
+
+// Test for XML with CDATA
+void test_with_cdata(void) {
+    SXMLExplorer* explorer = sxml_make_explorer();
+    char* xml = read_file_to_string("test-data/test-with-cdata.xml");
+    CU_ASSERT_PTR_NOT_NULL_FATAL(xml);
+
+    unsigned char result = sxml_run_explorer(explorer, xml);
+    CU_ASSERT_EQUAL(result, SXMLExplorerComplete);
+
+    sxml_destroy_explorer(explorer);
+    free(xml);
+}
+
 void add_oss_xml_tests(CU_pSuite* suite) {
   CU_add_test(*suite, "Real-world XML Sitemap parsing", test_real_world_xml_sitemap);
   CU_add_test(*suite, "Real-world Atom Feed parsing", test_real_world_atom_feed);
   CU_add_test(*suite, "Complex XML with all features", test_complex_xml_with_cdata_and_entities);
   CU_add_test(*suite, "Error handling with malformed XML", test_error_handling_with_malformed_xml);
+  CU_add_test(*suite, "Parse RSS feed", test_rss_feed);
+  CU_add_test(*suite, "Parse Atom entry", test_atom_entry);
+  CU_add_test(*suite, "Parse XML with comments", test_with_comments);
+  CU_add_test(*suite, "Parse XML with CDATA", test_with_cdata);
 }
