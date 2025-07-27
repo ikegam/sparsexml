@@ -109,7 +109,7 @@ static unsigned char atom_exi_on_comment(char *comment) {
 }
 
 void test_parse_atom_feed_exi(void) {
-  FILE* f = fopen("test-oss-1.exi", "rb");
+  FILE* f = fopen("test-data/test-oss-1.exi", "rb");
   CU_ASSERT_PTR_NOT_NULL_FATAL(f);
   fseek(f, 0, SEEK_END);
   long size = ftell(f);
