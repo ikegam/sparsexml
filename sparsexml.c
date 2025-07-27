@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <assert.h>
 
 #include "sparsexml-priv.h"
@@ -31,7 +30,7 @@ unsigned char priv_append_string(SXMLExplorer* explorer, const char* str) {
 unsigned char priv_sxml_change_explorer_state(SXMLExplorer* explorer, SXMLExplorerState state) {
   unsigned char ret = SXMLExplorerContinue;
 
-  if (strlen(explorer->buffer) > 0) {
+  if (explorer->bp > 0) {
     if (explorer->state == IN_TAG && (state == IN_CONTENT || state == IN_TAG || state == IN_ATTRIBUTE_KEY) && explorer->tag_func != NULL) {
       if (explorer->enable_namespace_processing) {
         char* namespace_uri = NULL;
@@ -224,7 +223,7 @@ unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
       case IN_DECLARATION:
         switch (*xml) {
           case '>':
-            if (explorer->buffer[strlen(explorer->buffer)-1] != '?') {
+            if (explorer->bp == 0 || explorer->buffer[explorer->bp - 1] != '?') {
               break;
             }
             result = priv_sxml_change_explorer_state(explorer, IN_CONTENT);
@@ -240,7 +239,7 @@ unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
             result = priv_sxml_change_explorer_state(explorer, IN_ATTRIBUTE_KEY);
             continue;
           case '?':
-            if (explorer->buffer[strlen(explorer->buffer)-1] != '<') {
+            if (explorer->bp == 0 || explorer->buffer[explorer->bp - 1] != '<') {
               break;
             }
             result =  priv_sxml_change_explorer_state(explorer, IN_DECLARATION);
@@ -444,18 +443,6 @@ static unsigned char priv_add_to_string_table(EXIStringTable* table, const char*
   return 1;
 }
 
-// Schema-less EXI event types
-#define EXI_SE_QNAME 0           // Start Element with QName
-#define EXI_SE_LOCAL_NAME 1      // Start Element with local name
-#define EXI_AT_QNAME 2           // Attribute with QName
-#define EXI_CH 3                 // Characters
-#define EXI_EE 4                 // End Element
-#define EXI_CM 5                 // Comment
-#define EXI_PI 6                 // Processing Instruction
-#define EXI_DT 7                 // Document Type
-#define EXI_ER 8                 // Entity Reference
-#define EXI_SC 9                 // Self Contained
-#define EXI_NS 10                // Namespace Declaration
 
 static unsigned char priv_parse_schemaless_exi(SXMLExplorer* explorer, unsigned char* exi, unsigned int len) {
   EXIHeader header;
@@ -746,7 +733,7 @@ unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi,
 
         if (uri_len + local_name_len + 1 < SXMLElementLength) {
           char full_name[SXMLElementLength];
-          sprintf(full_name, "%s:%s", uri, local_name);
+          snprintf(full_name, sizeof(full_name), "%s:%s", uri, local_name);
           if (explorer->tag_func)
             result = explorer->tag_func(full_name);
         } else {
