@@ -7,7 +7,6 @@ OBJ = $(SRC:.c=.o)
 
 TEST_SRC = test.c test-private.c test-oss-xml.c test-entities.c test-exi.c
 TEST_OBJ = $(TEST_SRC:.c=.o)
-EXI_TOOL = scripts/xml_to_exi.py
 
 EXAMPLES_SRC = examples/simple.c
 EXAMPLES_OBJ = $(EXAMPLES_SRC:.c=.o)
@@ -24,7 +23,7 @@ BENCH_SRC = bench/bench.c \
             bench/main.c
 BENCH_OBJ = $(BENCH_SRC:.c=.o)
 
-all: test-sparsexml examples/simple bench/bench test-oss-1.exi
+all: test-sparsexml examples/simple bench/bench
 
 test: test-sparsexml
 	./$<
@@ -55,9 +54,6 @@ bench/bench_stress_test.o: bench/bench_stress_test.c
 	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
 bench/bench_unicode_content.o: bench/bench_unicode_content.c
 	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
-
-test-oss-1.exi: test-oss-1.xml $(EXI_TOOL)
-	python3 $(EXI_TOOL) $< $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
