@@ -77,7 +77,7 @@ void bench_stress_size(const char* xml, const char* size_name, int iterations) {
     }
 
     clock_t start, end;
-    size_t sparse_avg = 0, sparse_max = 0;
+    size_t sparse_avg = 0;
     size_t total = 0, maximum = 0;
     
     // SparseXML benchmark
@@ -93,7 +93,6 @@ void bench_stress_size(const char* xml, const char* size_name, int iterations) {
     }
     end = clock();
     sparse_avg = total / iterations;
-    sparse_max = maximum;
     double sparse_time = (double)(end - start) / CLOCKS_PER_SEC;
 
     // Expat benchmark
@@ -111,7 +110,6 @@ void bench_stress_size(const char* xml, const char* size_name, int iterations) {
     }
     end = clock();
     size_t expat_avg = total / iterations;
-    size_t expat_max = maximum;
     double expat_time = (double)(end - start) / CLOCKS_PER_SEC;
 
     // TinyXML benchmark
@@ -126,7 +124,6 @@ void bench_stress_size(const char* xml, const char* size_name, int iterations) {
     }
     end = clock();
     size_t tiny_avg = total / iterations;
-    size_t tiny_max = maximum;
     double tiny_time = (double)(end - start) / CLOCKS_PER_SEC;
 
     printf("%-12s | %8d | %18zu | %14zu | %14zu | %16.6f | %16.6f | %16.6f\n",
