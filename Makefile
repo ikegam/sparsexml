@@ -60,6 +60,6 @@ bench/bench_unicode_content.o: bench/bench_unicode_content.c
 
 clean:
 	rm -f $(OBJ) $(TEST_OBJ) $(EXAMPLES_OBJ) $(BENCH_OBJ)
-	rm -f test-sparsexml examples/simple bench/bench test-oss-1.exi
+	rm -f test-sparsexml examples/simple bench/bench
 
 .PHONY: clean all test
