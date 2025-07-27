@@ -3,6 +3,14 @@
 
 SparseXML is a lightweight XML parser designed for resource-constrained embedded systems. It provides SAX-style event-driven parsing with minimal memory footprint (~1KB) and zero external dependencies.
 
+## Integration
+Simply copy these 3 files to your project:
+- `sparsexml.h` – Public API header
+- `sparsexml-priv.h` – Private definitions
+- `sparsexml.c` – Implementation
+
+Then include `sparsexml.h` in your code. No build system or external dependencies required.
+
 ## Features
 - **Minimal Memory**: Fixed 1KB buffer, no dynamic allocation
 - **Event-Driven**: SAX-style callbacks for tags, attributes, content
