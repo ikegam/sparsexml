@@ -530,7 +530,7 @@ static unsigned char priv_parse_schemaless_exi(SXMLExplorer* explorer, unsigned 
               // Also generate end element
               if (tag_count < 25) {
                 char end_tag[64];
-                snprintf(end_tag, sizeof(end_tag), "/%s", buffer);
+                snprintf(end_tag, sizeof(end_tag), "/%.*s", (int)sizeof(end_tag) - 2, buffer);
                 result = explorer->tag_func(end_tag);
                 tag_count++;
               }
@@ -591,7 +591,7 @@ static unsigned char priv_parse_schemaless_exi(SXMLExplorer* explorer, unsigned 
             // Add end tag
             if (tag_count < 15) {
               char end_tag[64];
-              snprintf(end_tag, sizeof(end_tag), "/%s", buffer);
+              snprintf(end_tag, sizeof(end_tag), "/%.*s", (int)sizeof(end_tag) - 2, buffer);
               result = explorer->tag_func(end_tag);
               tag_count++;
             }
@@ -733,7 +733,12 @@ unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi,
 
         if (uri_len + local_name_len + 1 < SXMLElementLength) {
           char full_name[SXMLElementLength];
-          snprintf(full_name, sizeof(full_name), "%s:%s", uri, local_name);
+          int needed = snprintf(full_name, sizeof(full_name), "%s:%s", uri, local_name);
+
+          if (needed >= sizeof(full_name)) {
+            return SXMLExplorerErrorBufferOverflow;
+          }
+
           if (explorer->tag_func)
             result = explorer->tag_func(full_name);
         } else {
