@@ -512,28 +512,13 @@ static void priv_init_exi_explorer(SXMLExplorer* explorer) {
   explorer->buffer[0] = '\0';
 }
 
-typedef enum {
-  EXI_FORMAT_SIMPLE_TOKEN,
-  EXI_FORMAT_SCHEMALESS,
-  EXI_FORMAT_INVALID
-} EXIFormat;
 
-static EXIFormat priv_detect_exi_format(unsigned char* exi, unsigned int len) {
-  if (len > 50 && (exi[0] == '$' || (exi[0] & 0xC0) == 0x80)) {
-    return EXI_FORMAT_SCHEMALESS;
-  }
-  if (len > 0) {
-    return EXI_FORMAT_SIMPLE_TOKEN;
-  }
-  return EXI_FORMAT_INVALID;
-}
 
 // =============================================================================
-// EXI SUPPORT: SCHEMA-LESS PARSER
+// EXI SUPPORT: UNIFIED PARSER
 // =============================================================================
 
 static unsigned char priv_parse_schemaless_exi(SXMLExplorer* explorer, unsigned char* exi, unsigned int len) {
-  EXIHeader header;
   unsigned int offset = 0;
   unsigned char result = SXMLExplorerContinue;
   
@@ -541,6 +526,7 @@ static unsigned char priv_parse_schemaless_exi(SXMLExplorer* explorer, unsigned 
   priv_init_exi_explorer(explorer);
   
   // Parse EXI header
+  EXIHeader header;
   if (!priv_parse_exi_header(exi, len, &offset, &header)) {
     return SXMLExplorerErrorMalformedXML;
   }
@@ -698,152 +684,16 @@ static unsigned char priv_parse_schemaless_exi(SXMLExplorer* explorer, unsigned 
   return (result == SXMLExplorerContinue) ? SXMLExplorerComplete : result;
 }
 
-// =============================================================================
-// EXI SUPPORT: SIMPLE TOKEN PARSER
-// =============================================================================
-
-static unsigned char priv_parse_simple_token_exi(SXMLExplorer* explorer, unsigned char* exi, unsigned int len) {
-  unsigned int pos = 0;
-  unsigned char result = SXMLExplorerContinue;
-  
-  // Initialize explorer state for EXI parsing
-  priv_init_exi_explorer(explorer);
-
-  while (pos < len && result == SXMLExplorerContinue) {
-    unsigned char token = exi[pos++];
-
-    switch (token) {
-      case 0x01: { // Start element
-        if (pos >= len) return SXMLExplorerErrorMalformedXML;
-        unsigned char name_len = exi[pos++];
-        if (pos + name_len > len || name_len >= SXMLElementLength)
-          return SXMLExplorerErrorMalformedXML;
-        char name[SXMLElementLength];
-        memcpy(name, &exi[pos], name_len);
-        name[name_len] = '\0';
-        pos += name_len;
-        result = priv_exi_call_tag_func(explorer, name);
-        break;
-      }
-      case 0x02: { // End element
-        if (pos >= len) return SXMLExplorerErrorMalformedXML;
-        unsigned char name_len = exi[pos++];
-        if (pos + name_len > len || name_len >= SXMLElementLength - 1)
-          return SXMLExplorerErrorMalformedXML;
-        char name[SXMLElementLength];
-        name[0] = '/';
-        memcpy(name + 1, &exi[pos], name_len);
-        name[name_len + 1] = '\0';
-        pos += name_len;
-        result = priv_exi_call_tag_func(explorer, name);
-        break;
-      }
-      case 0x03: { // Attribute key/value
-        if (pos >= len) return SXMLExplorerErrorMalformedXML;
-        unsigned char key_len = exi[pos++];
-        if (pos + key_len > len || key_len >= SXMLElementLength)
-          return SXMLExplorerErrorMalformedXML;
-        char key[SXMLElementLength];
-        memcpy(key, &exi[pos], key_len);
-        key[key_len] = '\0';
-        pos += key_len;
-
-        if (pos >= len) return SXMLExplorerErrorMalformedXML;
-        unsigned char val_len = exi[pos++];
-        if (pos + val_len > len || val_len >= SXMLElementLength)
-          return SXMLExplorerErrorMalformedXML;
-        char value[SXMLElementLength];
-        memcpy(value, &exi[pos], val_len);
-        value[val_len] = '\0';
-        pos += val_len;
-
-        if (explorer->attribute_key_func)
-          result = explorer->attribute_key_func(key);
-        if (result != SXMLExplorerContinue) break;
-        if (explorer->attribute_value_func)
-          result = explorer->attribute_value_func(value);
-        break;
-      }
-      case 0x04: { // Characters
-        if (pos >= len) return SXMLExplorerErrorMalformedXML;
-        unsigned char text_len = exi[pos++];
-        if (pos + text_len > len || text_len >= SXMLElementLength)
-          return SXMLExplorerErrorMalformedXML;
-        char text[SXMLElementLength];
-        memcpy(text, &exi[pos], text_len);
-        text[text_len] = '\0';
-        pos += text_len;
-        result = priv_exi_call_content_func(explorer, text);
-        break;
-      }
-      case 0x05: { // Comment
-        if (pos >= len) return SXMLExplorerErrorMalformedXML;
-        unsigned char com_len = exi[pos++];
-        if (pos + com_len > len || com_len >= SXMLElementLength)
-          return SXMLExplorerErrorMalformedXML;
-        char comment[SXMLElementLength];
-        memcpy(comment, &exi[pos], com_len);
-        comment[com_len] = '\0';
-        pos += com_len;
-        result = priv_exi_call_comment_func(explorer, comment);
-        break;
-      }
-      case 0x06: { // Namespace-prefixed tag
-        if (pos >= len) return SXMLExplorerErrorMalformedXML;
-        unsigned char uri_len = exi[pos++];
-        if (pos + uri_len > len || uri_len >= SXMLElementLength)
-          return SXMLExplorerErrorMalformedXML;
-        char uri[SXMLElementLength];
-        memcpy(uri, &exi[pos], uri_len);
-        uri[uri_len] = '\0';
-        pos += uri_len;
-
-        if (pos >= len) return SXMLExplorerErrorMalformedXML;
-        unsigned char local_name_len = exi[pos++];
-        if (pos + local_name_len > len || local_name_len >= SXMLElementLength)
-          return SXMLExplorerErrorMalformedXML;
-        char local_name[SXMLElementLength];
-        memcpy(local_name, &exi[pos], local_name_len);
-        local_name[local_name_len] = '\0';
-        pos += local_name_len;
-
-        if (uri_len + local_name_len + 1 < SXMLElementLength) {
-          char full_name[SXMLElementLength];
-          int needed = snprintf(full_name, sizeof(full_name), "%s:%s", uri, local_name);
-
-          if (needed >= sizeof(full_name)) {
-            return SXMLExplorerErrorBufferOverflow;
-          }
-
-          result = priv_exi_call_tag_func(explorer, full_name);
-        } else {
-          return SXMLExplorerErrorBufferOverflow;
-        }
-        break;
-      }
-      case 0xFF:
-        return SXMLExplorerComplete;
-      default:
-        return SXMLExplorerErrorMalformedXML;
-    }
-  }
-
-  return result == SXMLExplorerStop ? SXMLExplorerInterrupted : SXMLExplorerComplete;
-}
 
 // =============================================================================
 // EXI SUPPORT: MAIN PARSER
 // =============================================================================
 
 unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi, unsigned int len) {
-  EXIFormat format = priv_detect_exi_format(exi, len);
-  
-  switch (format) {
-    case EXI_FORMAT_SCHEMALESS:
-      return priv_parse_schemaless_exi(explorer, exi, len);
-    case EXI_FORMAT_SIMPLE_TOKEN:
-      return priv_parse_simple_token_exi(explorer, exi, len);
-    default:
-      return SXMLExplorerErrorMalformedXML;
+  if (len == 0) {
+    return SXMLExplorerErrorMalformedXML;
   }
+  
+  // Use unified EXI parser for all formats
+  return priv_parse_schemaless_exi(explorer, exi, len);
 }
