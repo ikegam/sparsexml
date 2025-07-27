@@ -443,56 +443,31 @@ static unsigned char priv_add_to_string_table(EXIStringTable* table, const char*
   return 1;
 }
 
-// Helper function to set buffer content and call state change for EXI parsing
+// Helper function to call tag function directly for EXI parsing
 static unsigned char priv_exi_call_tag_func(SXMLExplorer* explorer, const char* tag_name) {
   if (!explorer->tag_func) return SXMLExplorerContinue;
   
-  // Set the buffer content
-  unsigned int len = strlen(tag_name);
-  if (len >= SXMLElementLength) len = SXMLElementLength - 1;
-  
-  memcpy(explorer->buffer, tag_name, len);
-  explorer->buffer[len] = '\0';
-  explorer->bp = len;
-  
-  // Call through state management to ensure consistent behavior
-  return priv_sxml_change_explorer_state(explorer, IN_CONTENT);
+  // For EXI, call the tag function directly without state management
+  // EXI is already tokenized and doesn't need XML's state transitions
+  return explorer->tag_func((char*)tag_name);
 }
 
-// Helper function to set buffer content and call content function for EXI parsing
+// Helper function to call content function directly for EXI parsing
 static unsigned char priv_exi_call_content_func(SXMLExplorer* explorer, const char* content) {
   if (!explorer->content_func) return SXMLExplorerContinue;
   
-  // Set the buffer content
-  unsigned int len = strlen(content);
-  if (len >= SXMLElementLength) len = SXMLElementLength - 1;
-  
-  memcpy(explorer->buffer, content, len);
-  explorer->buffer[len] = '\0';
-  explorer->bp = len;
-  
-  // Call through state management to ensure consistent behavior
-  return priv_sxml_change_explorer_state(explorer, IN_TAG);
+  // For EXI, call the content function directly without state management
+  // EXI is already tokenized and doesn't need XML's state transitions
+  return explorer->content_func((char*)content);
 }
 
-// Helper function to call comment function for EXI parsing
+// Helper function to call comment function directly for EXI parsing
 static unsigned char priv_exi_call_comment_func(SXMLExplorer* explorer, const char* comment) {
   if (!explorer->comment_func) return SXMLExplorerContinue;
   
-  // Set the buffer content
-  unsigned int len = strlen(comment);
-  if (len >= SXMLElementLength) len = SXMLElementLength - 1;
-  
-  memcpy(explorer->buffer, comment, len);
-  explorer->buffer[len] = '\0';
-  explorer->bp = len;
-  
-  // Set state to comment and call the function
-  explorer->state = IN_COMMENT;
-  unsigned char result = explorer->comment_func((char*)comment);
-  explorer->state = IN_CONTENT;
-  
-  return result;
+  // For EXI, call the comment function directly without state management
+  // EXI is already tokenized and doesn't need XML's state transitions
+  return explorer->comment_func((char*)comment);
 }
 
 
