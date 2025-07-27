@@ -9,7 +9,7 @@
 unsigned char priv_sxml_change_explorer_state(SXMLExplorer* explorer, SXMLExplorerState state) {
   unsigned char ret = SXMLExplorerContinue;
 
-  if (strlen(explorer->buffer) > 0) {
+  if (explorer->bp > 0) {
     if (explorer->state == IN_TAG && (state == IN_CONTENT || state == IN_TAG || state == IN_ATTRIBUTE_KEY) && explorer->tag_func != NULL) {
       if (explorer->enable_namespace_processing) {
         char* namespace_uri = NULL;
@@ -54,14 +54,10 @@ SXMLExplorer* sxml_make_explorer(void) {
   explorer->state = INITIAL;
   explorer->bp = 0;
   explorer->buffer[0] = '\0';
-  explorer->header_parsed = 0;
-  explorer->comment_depth = 0;
-  explorer->cdata_pos = 0;
   explorer->comment_func = NULL;
   explorer->prev_state = INITIAL;
   explorer->entity_bp = 0;
   explorer->entity_buffer[0] = '\0';
-  explorer->saved_bp = 0;
   explorer->enable_entity_processing = 0;
   explorer->enable_namespace_processing = 0;
   explorer->enable_extended_entities = 0;
@@ -165,60 +161,33 @@ unsigned char priv_sxml_process_numeric_entity(SXMLExplorer* explorer, char* ent
 }
 
 unsigned char priv_sxml_process_extended_entity(SXMLExplorer* explorer, char* entity_buffer) {
-  // Common HTML entities (keeping it minimal for embedded systems)
-  char replacement = '\0';
-  
-  if (strcmp(entity_buffer, "nbsp") == 0) {
-    replacement = ' ';  // Non-breaking space -> regular space
-  } else if (strcmp(entity_buffer, "copy") == 0) {
-    // For embedded systems, replace with simple text
-    const char* copyright_text = "(c)";
-    int len = strlen(copyright_text);
-    if (explorer->bp + len < SXMLElementLength) {
-      strcpy(explorer->buffer + explorer->bp, copyright_text);
-      explorer->bp += len;
-      return SXMLExplorerContinue;
-    } else {
-      return SXMLExplorerErrorBufferOverflow;
-    }
-  } else if (strcmp(entity_buffer, "reg") == 0) {
-    const char* reg_text = "(R)";
-    int len = strlen(reg_text);
-    if (explorer->bp + len < SXMLElementLength) {
-      strcpy(explorer->buffer + explorer->bp, reg_text);
-      explorer->bp += len;
-      return SXMLExplorerContinue;
-    } else {
-      return SXMLExplorerErrorBufferOverflow;
-    }
-  } else if (strcmp(entity_buffer, "trade") == 0) {
-    const char* trade_text = "(TM)";
-    int len = strlen(trade_text);
-    if (explorer->bp + len < SXMLElementLength) {
-      strcpy(explorer->buffer + explorer->bp, trade_text);
-      explorer->bp += len;
-      return SXMLExplorerContinue;
-    } else {
-      return SXMLExplorerErrorBufferOverflow;
-    }
-  } else if (strcmp(entity_buffer, "euro") == 0) {
-    replacement = 'E';  // Euro symbol -> E for ASCII compatibility
-  } else if (strcmp(entity_buffer, "pound") == 0) {
-    replacement = '#';  // Pound symbol -> # for ASCII compatibility
-  } else {
-    return SXMLExplorerErrorInvalidEntity;
-  }
-  
-  if (replacement != '\0') {
-    if (explorer->bp < SXMLElementLength - 1) {
-      explorer->buffer[explorer->bp++] = replacement;
-      explorer->buffer[explorer->bp] = '\0';
-    } else {
+  static const struct {
+    const char* name;
+    const char* replacement;
+  } table[] = {
+    {"nbsp", " "},
+    {"copy", "(c)"},
+    {"reg", "(R)"},
+    {"trade", "(TM)"},
+    {"euro", "E"},
+    {"pound", "#"},
+    {NULL, NULL}
+  };
+
+  for (int i = 0; table[i].name; i++) {
+    if (strcmp(entity_buffer, table[i].name) == 0) {
+      const char* rep = table[i].replacement;
+      size_t len = strlen(rep);
+      if (explorer->bp + len < SXMLElementLength) {
+        strcpy(explorer->buffer + explorer->bp, rep);
+        explorer->bp += len;
+        return SXMLExplorerContinue;
+      }
       return SXMLExplorerErrorBufferOverflow;
     }
   }
-  
-  return SXMLExplorerContinue;
+
+  return SXMLExplorerErrorInvalidEntity;
 }
 
 void priv_sxml_process_namespace(char* tag_name, char** namespace_uri, char** local_name) {
