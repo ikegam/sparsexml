@@ -32,5 +32,7 @@ unsigned char priv_sxml_process_entity(SXMLExplorer* explorer, char* entity_buff
 unsigned char priv_sxml_process_numeric_entity(SXMLExplorer* explorer, char* entity_buffer);
 unsigned char priv_sxml_process_extended_entity(SXMLExplorer* explorer, char* entity_buffer);
 void priv_sxml_process_namespace(char* tag_name, char** namespace_uri, char** local_name);
+unsigned char priv_append_char(SXMLExplorer* explorer, char c);
+unsigned char priv_append_string(SXMLExplorer* explorer, const char* str);
 
 #endif
