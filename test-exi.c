@@ -3,6 +3,8 @@
 #include <string.h>
 
 #include "sparsexml.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 static unsigned int exi_tag_count = 0;
 static unsigned int exi_content_count = 0;
@@ -82,8 +84,65 @@ void test_parse_exi_with_namespace(void) {
   sxml_destroy_explorer(ex);
 }
 
+// Callbacks and counters for parsing external EXI sample
+static unsigned int atom_exi_tag_count = 0;
+static unsigned int atom_exi_content_count = 0;
+static unsigned int atom_exi_comment_count = 0;
+static unsigned char atom_exi_found_entities = 0;
+
+static unsigned char atom_exi_on_tag(char *name) {
+  atom_exi_tag_count++;
+  return SXMLExplorerContinue;
+}
+
+static unsigned char atom_exi_on_content(char *content) {
+  atom_exi_content_count++;
+  if (strlen(content) > 0) {
+    atom_exi_found_entities = 1;
+  }
+  return SXMLExplorerContinue;
+}
+
+static unsigned char atom_exi_on_comment(char *comment) {
+  atom_exi_comment_count++;
+  return SXMLExplorerContinue;
+}
+
+void test_parse_atom_feed_exi(void) {
+  FILE* f = fopen("test-oss-1.exi", "rb");
+  CU_ASSERT_PTR_NOT_NULL_FATAL(f);
+  fseek(f, 0, SEEK_END);
+  long size = ftell(f);
+  rewind(f);
+  unsigned char* buf = (unsigned char*)malloc(size);
+  CU_ASSERT_PTR_NOT_NULL_FATAL(buf);
+  fread(buf, 1, size, f);
+  fclose(f);
+
+  atom_exi_tag_count = 0;
+  atom_exi_content_count = 0;
+  atom_exi_comment_count = 0;
+  atom_exi_found_entities = 0;
+
+  SXMLExplorer* ex = sxml_make_explorer();
+  sxml_enable_entity_processing(ex, 1);
+  sxml_register_func(ex, atom_exi_on_tag, atom_exi_on_content, NULL, NULL);
+  sxml_register_comment_func(ex, atom_exi_on_comment);
+  unsigned char ret = sxml_run_explorer_exi(ex, buf, size);
+
+  CU_ASSERT(ret == SXMLExplorerComplete);
+  CU_ASSERT(atom_exi_tag_count >= 10);
+  CU_ASSERT(atom_exi_content_count >= 5);
+  CU_ASSERT(atom_exi_comment_count == 1);
+  CU_ASSERT(atom_exi_found_entities == 1);
+
+  sxml_destroy_explorer(ex);
+  free(buf);
+}
+
 void add_exi_tests(CU_pSuite* suite) {
   CU_add_test(*suite, "Parse simple EXI", test_parse_simple_exi);
   CU_add_test(*suite, "Parse EXI with attribute", test_parse_exi_with_attribute);
   CU_add_test(*suite, "Parse EXI with namespace", test_parse_exi_with_namespace);
+  CU_add_test(*suite, "Parse Atom feed EXI", test_parse_atom_feed_exi);
 }
