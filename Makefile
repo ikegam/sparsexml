@@ -5,7 +5,7 @@ LDFLAGS ?= -Wl,-z,noexecstack
 SRC = sparsexml.c
 OBJ = $(SRC:.c=.o)
 
-TEST_SRC = test.c test-private.c test-oss-xml.c test-entities.c test-exi.c
+TEST_SRC = test.c test-private.c test-oss-xml.c test-entities.c test-exi.c test-chunked.c
 TEST_OBJ = $(TEST_SRC:.c=.o)
 
 EXAMPLES_SRC = examples/simple.c

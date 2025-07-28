@@ -8,6 +8,7 @@ void add_private_test(CU_pSuite*);
 void add_oss_xml_tests(CU_pSuite*);
 void add_entity_tests(CU_pSuite*);
 void add_exi_tests(CU_pSuite*);
+void add_chunked_tests(CU_pSuite*);
 
 // Static callback functions for tests
 static unsigned char test_parse_simple_xml_on_tag(char *name) {
@@ -247,7 +248,7 @@ void test_check_parsing_doctype(void) {
 }
 
 int main(void) {
-  CU_pSuite core_suite, internal_suite, advanced_suite, entity_suite, realworld_suite, exi_suite;
+  CU_pSuite core_suite, internal_suite, advanced_suite, entity_suite, realworld_suite, chunked_suite, exi_suite;
   CU_initialize_registry();
 
   // Core API and Basic Parsing Suite
@@ -275,6 +276,10 @@ int main(void) {
   // Real-world XML Suite
   realworld_suite = CU_add_suite("Real-world XML Samples", NULL, NULL);
   add_oss_xml_tests(&realworld_suite);
+
+  // Chunked Parsing Suite
+  chunked_suite = CU_add_suite("Chunked XML Parsing", NULL, NULL);
+  add_chunked_tests(&chunked_suite);
 
   // EXI Suite
   exi_suite = CU_add_suite("EXI Support", NULL, NULL);
