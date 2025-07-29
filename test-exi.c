@@ -55,8 +55,8 @@ void test_parse_atom_feed_exi(void) {
   unsigned char ret = sxml_run_explorer_exi(ex, buf, size);
 
   CU_ASSERT(ret == SXMLExplorerComplete);
-  CU_ASSERT(atom_exi_tag_count >= 10);
-  CU_ASSERT(atom_exi_content_count >= 5);
+  CU_ASSERT_EQUAL(atom_exi_tag_count, 15);
+  CU_ASSERT_EQUAL(atom_exi_content_count, 15);
   CU_ASSERT(atom_exi_comment_count == 1);
   CU_ASSERT(atom_exi_found_entities == 1);
 
@@ -221,6 +221,7 @@ void test_sitemap_exi(void) {
     CU_ASSERT_EQUAL(result, SXMLExplorerComplete);
     CU_ASSERT_EQUAL(sitemap_exi_tag_count, 10);
     CU_ASSERT_EQUAL(sitemap_exi_content_count, 10);
+    CU_ASSERT(sitemap_exi_found_namespace == 0);
 
     sxml_destroy_explorer(explorer);
     free(exi);

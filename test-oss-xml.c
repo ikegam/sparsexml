@@ -69,8 +69,8 @@ void test_real_world_xml_sitemap(void) {
   unsigned char result = sxml_run_explorer(explorer, xml);
   
   CU_ASSERT(result == SXMLExplorerComplete);
-  CU_ASSERT(sitemap_tag_count > 0);  // Should parse multiple tags
-  CU_ASSERT(sitemap_content_count > 0);  // Should parse content
+  CU_ASSERT_EQUAL(sitemap_tag_count, 12);  // Should parse multiple tags
+  CU_ASSERT_EQUAL(sitemap_content_count, 12);  // Should parse content
   CU_ASSERT(sitemap_found_namespace == 1);  // Should handle namespace
   
   sxml_destroy_explorer(explorer);
@@ -132,8 +132,8 @@ void test_real_world_atom_feed(void) {
   unsigned char result = sxml_run_explorer(explorer, xml);
   
   CU_ASSERT(result == SXMLExplorerComplete);
-  CU_ASSERT(atom_tag_count >= 10);  // Should parse many tags
-  CU_ASSERT(atom_content_count >= 5);  // Should parse content elements
+  CU_ASSERT_EQUAL(atom_tag_count, 26);  // Should parse many tags
+  CU_ASSERT_EQUAL(atom_content_count, 24);  // Should parse content elements
   CU_ASSERT(atom_comment_count == 1);  // Should find the comment
   CU_ASSERT(atom_found_entities == 1);  // Should process entities
 
@@ -211,8 +211,8 @@ void test_complex_xml_with_cdata_and_entities(void) {
   
   // Should complete successfully with supported entities only
   CU_ASSERT(result == SXMLExplorerComplete);
-  CU_ASSERT(complex_tag_count >= 6);  // Should parse multiple tags (root, config, app:setting, description, data, footer)
-  CU_ASSERT(complex_content_count >= 3);  // Should parse multiple content sections
+  CU_ASSERT_EQUAL(complex_tag_count, 12);  // Should parse multiple tags (root, config, app:setting, description, data, footer)
+  CU_ASSERT_EQUAL(complex_content_count, 12);  // Should parse multiple content sections
   CU_ASSERT(complex_comment_count == 1);  // Should find the comment
   CU_ASSERT(complex_found_cdata == 1);  // Should process CDATA section
   CU_ASSERT(complex_found_entities == 1);  // Should find content (entities processed)
@@ -257,7 +257,7 @@ void test_error_handling_with_malformed_xml(void) {
   CU_ASSERT(result == SXMLExplorerComplete || 
             result == SXMLExplorerErrorInvalidEntity ||
             result == SXMLExplorerErrorMalformedXML);
-  CU_ASSERT(error_tag_count > 0);  // Should parse some tags before errors
+  CU_ASSERT_EQUAL(error_tag_count, 5);  // Should parse some tags before errors
   
   sxml_destroy_explorer(explorer);
 }

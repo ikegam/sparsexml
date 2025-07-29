@@ -280,7 +280,7 @@ void test_complex_real_world_entities(void) {
   unsigned char result = sxml_run_explorer(explorer, xml);
   
   CU_ASSERT(result == SXMLExplorerComplete);
-  CU_ASSERT(test_complex_content_count >= 4);
+  CU_ASSERT_EQUAL(test_complex_content_count, 10);
   CU_ASSERT(found_amp == 1);
   CU_ASSERT(found_copy == 1);
   CU_ASSERT(found_code == 1);
