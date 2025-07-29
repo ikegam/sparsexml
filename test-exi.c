@@ -192,7 +192,7 @@ static unsigned char sitemap_exi_found_namespace = 0;
 
 static unsigned char sitemap_exi_on_tag(char* name) {
     sitemap_exi_tag_count++;
-    if (strcmp(name, "urlset") == 0) {
+    if (strstr(name, "urlset") != NULL) {
         sitemap_exi_found_namespace = 1;
     }
     return SXMLExplorerContinue;
@@ -219,9 +219,8 @@ void test_sitemap_exi(void) {
 
     unsigned char result = sxml_run_explorer_exi(explorer, exi, exi_size);
     CU_ASSERT_EQUAL(result, SXMLExplorerComplete);
-    CU_ASSERT(sitemap_exi_tag_count > 0);
-    CU_ASSERT(sitemap_exi_content_count > 0);
-    CU_ASSERT(sitemap_exi_found_namespace == 0);
+    CU_ASSERT_EQUAL(sitemap_exi_tag_count, 10);
+    CU_ASSERT_EQUAL(sitemap_exi_content_count, 10);
 
     sxml_destroy_explorer(explorer);
     free(exi);
