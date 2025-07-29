@@ -192,7 +192,7 @@ static unsigned char sitemap_exi_found_namespace = 0;
 
 static unsigned char sitemap_exi_on_tag(char* name) {
     sitemap_exi_tag_count++;
-    if (strcmp(name, "urlset") == 0) {
+    if (strstr(name, "urlset") != NULL) {
         sitemap_exi_found_namespace = 1;
     }
     return SXMLExplorerContinue;
