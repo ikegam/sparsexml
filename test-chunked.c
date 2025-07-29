@@ -128,7 +128,7 @@ void test_chunked_sitemap(void) {
     sxml_register_func(ex, sitemap_on_tag, NULL, NULL, NULL);
     unsigned char ret = feed_chunks(ex, xml, 32);
     CU_ASSERT_EQUAL(ret, SXMLExplorerComplete);
-    CU_ASSERT(sitemap_tag_count > 0);
+    CU_ASSERT_EQUAL(sitemap_tag_count, 12);
     sxml_destroy_explorer(ex);
     free(xml);
 }
