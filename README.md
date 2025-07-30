@@ -76,7 +76,6 @@ unsigned char result = sxml_run_explorer_exi(explorer, exi_data, exi_size);
 ```
 
 - Compatible with exificient-generated EXI files
-- Automatic format detection (real EXI vs simple token-based)
 - Dynamic string table management
 - Generic content classification
 
