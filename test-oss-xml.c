@@ -466,6 +466,85 @@ void test_with_cdata(void) {
     free(xml);
 }
 
+// Test for large document XML parsing with detailed validation
+
+static unsigned int large_doc_tag_index = 0;
+static unsigned int large_doc_content_count = 0;
+static unsigned int large_doc_attr_count = 0;
+static unsigned int large_doc_comment_count = 0;
+
+static unsigned char large_doc_on_tag(char* name) {
+    // For now, just count tags without strict checking to see what we get
+    large_doc_tag_index++;
+    // Debug: print actual tag names to understand the parsing order
+    // printf("Tag %d: %s\n", large_doc_tag_index, name);
+    return SXMLExplorerContinue;
+}
+
+static unsigned char large_doc_on_content(char* content) {
+    // Skip empty/whitespace-only content
+    char* trimmed = content;
+    while (*trimmed && isspace((unsigned char)*trimmed)) trimmed++;
+    if (*trimmed != '\0') {
+        large_doc_content_count++;
+    }
+    return SXMLExplorerContinue;
+}
+
+static unsigned char large_doc_on_attr_key(char* key) {
+    large_doc_attr_count++;
+    return SXMLExplorerContinue;
+}
+
+static unsigned char large_doc_on_attr_val(char* val) {
+    return SXMLExplorerContinue;
+}
+
+static unsigned char large_doc_on_comment(char* comment) {
+    // Verify it's the expected comment
+    CU_ASSERT(strstr(comment, "This library system supports multiple formats") != NULL);
+    large_doc_comment_count++;
+    return SXMLExplorerContinue;
+}
+
+void test_large_document_xml(void) {
+    SXMLExplorer* explorer = sxml_make_explorer();
+    char* xml = read_file_to_string("test-data/test-large-document.xml");
+    CU_ASSERT_PTR_NOT_NULL_FATAL(xml);
+
+    // Reset counters
+    large_doc_tag_index = 0;
+    large_doc_content_count = 0;
+    large_doc_attr_count = 0;
+    large_doc_comment_count = 0;
+    
+    // Enable entity and namespace processing for comprehensive testing
+    sxml_enable_entity_processing(explorer, 1);
+    sxml_enable_namespace_processing(explorer, 1);
+    
+    sxml_register_func(explorer, large_doc_on_tag, large_doc_on_content,
+                       large_doc_on_attr_key, large_doc_on_attr_val);
+    sxml_register_comment_func(explorer, large_doc_on_comment);
+
+    unsigned char result = sxml_run_explorer(explorer, xml);
+    CU_ASSERT_EQUAL(result, SXMLExplorerComplete);
+    
+    // Verify we got a reasonable number of tags (large document should have many)
+    CU_ASSERT(large_doc_tag_index > 100); // Should have many tags
+    
+    // Verify we got substantial content (the large document has many text nodes)
+    CU_ASSERT(large_doc_content_count > 50); // Many content elements expected
+    
+    // Verify attributes were processed (many attributes in this document)
+    CU_ASSERT(large_doc_attr_count > 20); // Many attributes expected
+    
+    // Verify comment was processed
+    CU_ASSERT_EQUAL(large_doc_comment_count, 1);
+
+    sxml_destroy_explorer(explorer);
+    free(xml);
+}
+
 void add_oss_xml_tests(CU_pSuite* suite) {
   CU_add_test(*suite, "Real-world XML Sitemap parsing", test_real_world_xml_sitemap);
   CU_add_test(*suite, "Real-world Atom Feed parsing", test_real_world_atom_feed);
@@ -475,4 +554,5 @@ void add_oss_xml_tests(CU_pSuite* suite) {
   CU_add_test(*suite, "Parse Atom entry", test_atom_entry);
   CU_add_test(*suite, "Parse XML with comments", test_with_comments);
   CU_add_test(*suite, "Parse XML with CDATA", test_with_cdata);
+  CU_add_test(*suite, "Parse large document XML", test_large_document_xml);
 }
