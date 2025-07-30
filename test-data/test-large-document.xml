@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<library xmlns="http://example.com/library" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://example.com/library library.xsd">
+  <metadata>
+    <dc:title>Digital Library Collection</dc:title>
+    <dc:creator>Library Management System</dc:creator>
+    <dc:date>2024-01-15</dc:date>
+    <dc:description>A comprehensive collection of digital books and resources</dc:description>
+    <version>2.1</version>
+    <lastUpdated>2024-01-15T10:30:00Z</lastUpdated>
+  </metadata>
+  
+  <categories>
+    <category id="fiction" name="Fiction">
+      <subcategory id="sci-fi" name="Science Fiction"/>
+      <subcategory id="fantasy" name="Fantasy"/>
+      <subcategory id="mystery" name="Mystery"/>
+    </category>
+    <category id="non-fiction" name="Non-Fiction">
+      <subcategory id="biography" name="Biography"/>
+      <subcategory id="history" name="History"/>
+      <subcategory id="science" name="Science"/>
+    </category>
+    <category id="reference" name="Reference">
+      <subcategory id="dictionary" name="Dictionary"/>
+      <subcategory id="encyclopedia" name="Encyclopedia"/>
+    </category>
+  </categories>
+  
+  <books>
+    <book id="book001" category="sci-fi" available="true">
+      <title>The Quantum Paradox</title>
+      <author>
+        <firstName>Dr. Sarah</firstName>
+        <lastName>Johnson</lastName>
+        <email>sarah.johnson@example.com</email>
+      </author>
+      <publication>
+        <publisher>Tech Books Publishing</publisher>
+        <year>2023</year>
+        <isbn>978-0123456789</isbn>
+        <pages>456</pages>
+      </publication>
+      <description><![CDATA[A thrilling science fiction novel exploring quantum physics and parallel universes. Dr. Elena Rodriguez discovers a way to observe quantum superposition at the macroscopic level, leading to unexpected consequences.]]></description>
+      <keywords>
+        <keyword>quantum physics</keyword>
+        <keyword>parallel universes</keyword>
+        <keyword>science fiction</keyword>
+        <keyword>technology</keyword>
+      </keywords>
+      <reviews>
+        <review rating="5" reviewer="TechReader123">
+          <comment>Brilliant blend of real science and imaginative storytelling!</comment>
+          <date>2023-12-15</date>
+        </review>
+        <review rating="4" reviewer="BookLover456">
+          <comment>Complex but rewarding read. The author's background in physics really shows.</comment>
+          <date>2023-11-28</date>
+        </review>
+      </reviews>
+      <availability>
+        <format type="hardcover" price="29.95" stock="15"/>
+        <format type="paperback" price="19.95" stock="42"/>
+        <format type="ebook" price="12.99" stock="unlimited"/>
+        <format type="audiobook" price="24.95" stock="8"/>
+      </availability>
+    </book>
+    
+    <book id="book002" category="fantasy" available="true">
+      <title>Chronicles of the Mystic Realm</title>
+      <author>
+        <firstName>Marcus</firstName>
+        <lastName>Blackwood</lastName>
+        <email>m.blackwood@fantasy-writers.org</email>
+      </author>
+      <publication>
+        <publisher>Epic Fantasy Press</publisher>
+        <year>2022</year>
+        <isbn>978-9876543210</isbn>
+        <pages>678</pages>
+      </publication>
+      <description><![CDATA[An epic fantasy adventure following the journey of Aria Moonwhisper as she discovers her magical heritage and battles the forces of darkness threatening the mystic realm.]]></description>
+      <keywords>
+        <keyword>fantasy</keyword>
+        <keyword>magic</keyword>
+        <keyword>adventure</keyword>
+        <keyword>mystical creatures</keyword>
+      </keywords>
+      <reviews>
+        <review rating="5" reviewer="FantasyFan789">
+          <comment>Absolutely enchanting! Best fantasy novel I've read this year.</comment>
+          <date>2023-10-22</date>
+        </review>
+        <review rating="4" reviewer="EpicReader">
+          <comment>Great world-building and character development. Looking forward to the sequel!</comment>
+          <date>2023-09-14</date>
+        </review>
+        <review rating="5" reviewer="MagicBookworm">
+          <comment>The magic system is incredibly well thought out. Highly recommended!</comment>
+          <date>2023-08-30</date>
+        </review>
+      </reviews>
+      <availability>
+        <format type="hardcover" price="32.95" stock="23"/>
+        <format type="paperback" price="22.95" stock="67"/>
+        <format type="ebook" price="14.99" stock="unlimited"/>
+      </availability>
+    </book>
+    
+    <book id="book003" category="history" available="false">
+      <title>Ancient Civilizations: A Comprehensive Study</title>
+      <author>
+        <firstName>Prof. David</firstName>
+        <lastName>Anderson</lastName>
+        <email>d.anderson@university.edu</email>
+      </author>
+      <publication>
+        <publisher>Academic Press International</publisher>
+        <year>2021</year>
+        <isbn>978-5432109876</isbn>
+        <pages>890</pages>
+      </publication>
+      <description><![CDATA[A detailed examination of ancient civilizations from Mesopotamia to the Americas, featuring the latest archaeological discoveries and historical analysis.]]></description>
+      <keywords>
+        <keyword>history</keyword>
+        <keyword>archaeology</keyword>
+        <keyword>ancient civilizations</keyword>
+        <keyword>culture</keyword>
+      </keywords>
+      <reviews>
+        <review rating="5" reviewer="HistoryProf">
+          <comment>Essential reading for anyone interested in ancient history. Comprehensive and well-researched.</comment>
+          <date>2023-07-18</date>
+        </review>
+        <review rating="4" reviewer="ArcheologyStudent">
+          <comment>Excellent resource for my studies. The illustrations are particularly helpful.</comment>
+          <date>2023-06-25</date>
+        </review>
+      </reviews>
+      <availability>
+        <format type="hardcover" price="45.00" stock="0"/>
+        <format type="paperback" price="35.00" stock="0"/>
+        <format type="ebook" price="28.99" stock="unlimited"/>
+      </availability>
+    </book>
+    
+    <book id="book004" category="biography" available="true">
+      <title>Marie Curie: Pioneer of Science</title>
+      <author>
+        <firstName>Dr. Catherine</firstName>
+        <lastName>Williams</lastName>
+        <email>c.williams@biography-institute.org</email>
+      </author>
+      <publication>
+        <publisher>Scientific Biographies Ltd</publisher>
+        <year>2023</year>
+        <isbn>978-1357924680</isbn>
+        <pages>542</pages>
+      </publication>
+      <description><![CDATA[A comprehensive biography of Marie Curie, exploring her groundbreaking scientific discoveries, personal struggles, and lasting impact on modern science.]]></description>
+      <keywords>
+        <keyword>biography</keyword>
+        <keyword>science</keyword>
+        <keyword>Marie Curie</keyword>
+        <keyword>physics</keyword>
+        <keyword>chemistry</keyword>
+      </keywords>
+      <reviews>
+        <review rating="5" reviewer="ScienceTeacher">
+          <comment>Inspiring story of perseverance and scientific achievement. Perfect for students and adults alike.</comment>
+          <date>2024-01-10</date>
+        </review>
+        <review rating="5" reviewer="BiographyReader">
+          <comment>Beautifully written and thoroughly researched. A must-read!</comment>
+          <date>2023-12-20</date>
+        </review>
+      </reviews>
+      <availability>
+        <format type="hardcover" price="28.95" stock="31"/>
+        <format type="paperback" price="18.95" stock="78"/>
+        <format type="ebook" price="11.99" stock="unlimited"/>
+        <format type="audiobook" price="22.95" stock="12"/>
+      </availability>
+    </book>
+    
+    <book id="book005" category="dictionary" available="true">
+      <title>Advanced Technical Dictionary</title>
+      <author>
+        <firstName>Editorial</firstName>
+        <lastName>Committee</lastName>
+        <email>editorial@techdict.com</email>
+      </author>
+      <publication>
+        <publisher>Technical Reference Publications</publisher>
+        <year>2024</year>
+        <isbn>978-2468135790</isbn>
+        <pages>1200</pages>
+      </publication>
+      <description><![CDATA[A comprehensive dictionary covering technical terms across multiple disciplines including engineering, computer science, physics, and mathematics.]]></description>
+      <keywords>
+        <keyword>reference</keyword>
+        <keyword>dictionary</keyword>
+        <keyword>technical terms</keyword>
+        <keyword>engineering</keyword>
+        <keyword>science</keyword>
+      </keywords>
+      <reviews>
+        <review rating="4" reviewer="Engineer123">
+          <comment>Very useful reference book. Covers a wide range of technical terminology.</comment>
+          <date>2024-01-08</date>
+        </review>
+        <review rating="5" reviewer="TechStudent">
+          <comment>Essential for anyone in technical fields. Clear definitions and examples.</comment>
+          <date>2024-01-05</date>
+        </review>
+      </reviews>
+      <availability>
+        <format type="hardcover" price="89.95" stock="18"/>
+        <format type="ebook" price="49.99" stock="unlimited"/>
+      </availability>
+    </book>
+  </books>
+  
+  <statistics>
+    <totalBooks>5</totalBooks>
+    <availableBooks>4</availableBooks>
+    <totalPages>3766</totalPages>
+    <averageRating>4.7</averageRating>
+    <popularCategories>
+      <category name="fantasy" books="1"/>
+      <category name="sci-fi" books="1"/>
+      <category name="history" books="1"/>
+      <category name="biography" books="1"/>
+      <category name="dictionary" books="1"/>
+    </popularCategories>
+  </statistics>
+  
+  <!-- Comment: This library system supports multiple formats and detailed metadata -->
+  
+</library>

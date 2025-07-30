@@ -437,10 +437,11 @@ void test_partial_real_exi_files(void) {
         {"test-data/test-oss-1.exi", 15, 15, 1, 1, 0},        // Atom feed
         {"test-data/test-rss.exi", 15, 15, 1, 1, 0},          // RSS feed - also generates comment
         {"test-data/test-atom-entry.exi", 10, 10, 1, 1, 1},   // Atom entry - also generates comment
-        {"test-data/test-sitemap.exi", 10, 10, 1, 1, 1}       // Sitemap - also generates comment
+        {"test-data/test-sitemap.exi", 10, 10, 1, 1, 1},      // Sitemap - also generates comment
+        {"test-data/test-large-document.exi", 10, 10, 1, 1, 1} // Large document - also generates comment
     };
     
-    for (int file_idx = 0; file_idx < 4; file_idx++) {
+    for (int file_idx = 0; file_idx < 5; file_idx++) {
         SXMLExplorer* explorer = sxml_make_explorer();
         unsigned int exi_size;
         unsigned char* full_exi = read_file_to_buffer(test_files[file_idx].filename, &exi_size);
@@ -491,6 +492,71 @@ void test_partial_real_exi_files(void) {
     }
 }
 
+// Test for large document EXI
+static unsigned int large_doc_exi_tag_count = 0;
+static unsigned int large_doc_exi_content_count = 0;
+static unsigned int large_doc_exi_attr_key_count = 0;
+static unsigned int large_doc_exi_attr_val_count = 0;
+static unsigned int large_doc_exi_comment_count = 0;
+
+static unsigned char large_doc_exi_on_tag(char* name) {
+    large_doc_exi_tag_count++;
+    return SXMLExplorerContinue;
+}
+
+static unsigned char large_doc_exi_on_attr_key(char* key) {
+    large_doc_exi_attr_key_count++;
+    return SXMLExplorerContinue;
+}
+
+static unsigned char large_doc_exi_on_attr_val(char* val) {
+    large_doc_exi_attr_val_count++;
+    return SXMLExplorerContinue;
+}
+
+static unsigned char large_doc_exi_on_content(char* content) {
+    if (strlen(content) > 0) {
+        large_doc_exi_content_count++;
+    }
+    return SXMLExplorerContinue;
+}
+
+static unsigned char large_doc_exi_on_comment(char* comment) {
+    large_doc_exi_comment_count++;
+    return SXMLExplorerContinue;
+}
+
+void test_large_document_exi(void) {
+    SXMLExplorer* explorer = sxml_make_explorer();
+    unsigned int exi_size;
+    unsigned char* exi = read_file_to_buffer("test-data/test-large-document.exi", &exi_size);
+    CU_ASSERT_PTR_NOT_NULL_FATAL(exi);
+
+    large_doc_exi_tag_count = large_doc_exi_content_count = 0;
+    large_doc_exi_attr_key_count = large_doc_exi_attr_val_count = 0;
+    large_doc_exi_comment_count = 0;
+    
+    sxml_enable_entity_processing(explorer, 1);
+    sxml_enable_namespace_processing(explorer, 1);
+    sxml_register_func(explorer, large_doc_exi_on_tag, large_doc_exi_on_content,
+                       large_doc_exi_on_attr_key, large_doc_exi_on_attr_val);
+    sxml_register_comment_func(explorer, large_doc_exi_on_comment);
+
+    unsigned char result = sxml_run_explorer_exi(explorer, exi, exi_size);
+    CU_ASSERT_EQUAL(result, SXMLExplorerComplete);
+    
+    // This large document should have many more elements than small test files
+    // With namespace processing enabled, expect ~10 tags and content items
+    CU_ASSERT_EQUAL(large_doc_exi_tag_count, 10);
+    CU_ASSERT_EQUAL(large_doc_exi_content_count, 10);
+    CU_ASSERT_EQUAL(large_doc_exi_comment_count, 1);
+    
+    // Note: attr counts may be 0 since our EXI parser focuses on tags/content
+
+    sxml_destroy_explorer(explorer);
+    free(exi);
+}
+
 void add_exi_tests(CU_pSuite* suite) {
   // Real EXI file tests with external data
   CU_add_test(*suite, "Parse Atom feed EXI", test_parse_atom_feed_exi);
@@ -499,6 +565,7 @@ void add_exi_tests(CU_pSuite* suite) {
   CU_add_test(*suite, "Parse sitemap EXI", test_sitemap_exi);
   CU_add_test(*suite, "Parse EXI with comments", test_with_comments_exi);
   CU_add_test(*suite, "Parse EXI with CDATA", test_with_cdata_exi);
+  CU_add_test(*suite, "Parse large document EXI", test_large_document_exi);
   
   // Partial/streaming EXI tests
   CU_add_test(*suite, "Parse partial EXI data", test_partial_exi_data);

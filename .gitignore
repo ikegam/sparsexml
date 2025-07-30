@@ -3,3 +3,4 @@ test-sparsexml
 bench/bench
 examples/simple
 exificient/
+*.jar
