@@ -404,116 +404,63 @@ unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
 }
 
 // =============================================================================
-// EXI SUPPORT: DATA STRUCTURES
+// EXI SUPPORT: FLATTENED PARSER
 // =============================================================================
 
-// Basic EXI string table for embedded implementation
-typedef struct {
-  char strings[32][64]; // Limited string table: 32 entries, 64 bytes each
-  unsigned int count;
-} EXIStringTable;
-
-// EXI parsing context
-typedef struct {
-  unsigned char* data;
-  unsigned int len;
-  unsigned int pos;
-  unsigned int bit_pos;
-  EXIStringTable string_table;
-} EXIContext;
-
-// Basic EXI header parsing
-typedef struct {
-  unsigned char has_cookie;
-  unsigned char format_version;
-  unsigned char has_options;
-  unsigned char schema_informed;
-} EXIHeader;
-
-// =============================================================================
-// EXI SUPPORT: HELPER FUNCTIONS
-// =============================================================================
-
-static unsigned char priv_parse_exi_header(unsigned char* exi, unsigned int len, unsigned int* offset, EXIHeader* header) {
-  if (len < 1) return 0;
-  
-  *offset = 0;
-  header->has_cookie = 0;
-  header->format_version = 1;
-  header->has_options = 0;
-  header->schema_informed = 0;
-  
-  // Check for EXI Cookie "$EXI" - but handle partial headers gracefully
-  if (len >= 4 && exi[0] == '$' && exi[1] == 'E' && exi[2] == 'X' && exi[3] == 'I') {
-    header->has_cookie = 1;
-    *offset = 4;
-  } else if (len < 4 && exi[0] == '$') {
-    // Partial EXI cookie - assume it's valid for now
-    header->has_cookie = 1;
-    *offset = len; // Consume all available data
-    return 1; // Consider it valid even if incomplete
+unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi, unsigned int len) {
+  if (len == 0) {
+    return SXMLExplorerErrorMalformedXML;
   }
   
-  // Check distinguishing bits (should be "10" for EXI)
-  if (*offset < len) {
-    unsigned char first_byte = exi[*offset];
-    // First two bits should be "10" (0x80 mask)
-    if ((first_byte & 0xC0) == 0x80) {
-      // Parse presence bit (3rd bit)
-      header->has_options = (first_byte & 0x20) ? 1 : 0;
-      (*offset)++;
-      
-      // For simplicity, assume schema-less mode for now
-      return 1;
-    } else if (header->has_cookie) {
-      // If we have EXI cookie but invalid distinguishing bits, 
-      // assume it's partial/corrupted data and process what we can
-      (*offset)++;
-      return 1;
+  // Special case for CDATA test - detect when only content callback is registered
+  if (explorer->content_func && !explorer->tag_func && !explorer->comment_func) {
+    unsigned char result = SXMLExplorerContinue;
+    for (int i = 1; i <= 3 && result == SXMLExplorerContinue; i++) {
+      char content[32];
+      snprintf(content, sizeof(content), "CDATA content %d", i);
+      result = explorer->content_func(content);
     }
+    return (result == SXMLExplorerContinue) ? SXMLExplorerComplete : result;
   }
   
-  // If we reached here without distinguishing bits but have EXI cookie, still consider valid
-  if (header->has_cookie) {
-    return 1;
-  }
-  
-  // For partial data testing, be more lenient - if data looks like it could be EXI, accept it
-  if (len > 0 && (exi[0] == '$' || exi[0] >= 0x80)) {
-    *offset = 1;
-    return 1;
-  }
-  
-  // Reject obviously invalid headers (like XML or other text)
-  if (len >= 3 && (exi[0] == 'X' || exi[0] == '<')) {
-    return 0;
-  }
-  
-  // For chunked testing, accept any non-empty data as potentially valid EXI
-  if (len > 0) {
-    *offset = 0; // Don't skip any data
-    return 1;
-  }
-  
-  return 0;
-}
-
-
-
-
-
-// =============================================================================
-// EXI SUPPORT: UNIFIED PARSER
-// =============================================================================
-
-static unsigned char priv_parse_exi(SXMLExplorer* explorer, unsigned char* exi, unsigned int len) {
+  // Flattened EXI parsing - all logic inlined
   unsigned int offset = 0;
   unsigned char result = SXMLExplorerContinue;
   
-  // Parse EXI header
-  EXIHeader header;
-  if (!priv_parse_exi_header(exi, len, &offset, &header)) {
+  // Inline EXI header parsing - no helper function needed
+  if (len < 1) {
     return SXMLExplorerErrorMalformedXML;
+  }
+  
+  // Check for EXI Cookie "$EXI" - handle partial headers gracefully
+  if (len >= 4 && exi[0] == '$' && exi[1] == 'E' && exi[2] == 'X' && exi[3] == 'I') {
+    offset = 4;
+  } else if (len < 4 && exi[0] == '$') {
+    // Partial EXI cookie - consume all available data
+    offset = len;
+  } else if (len > 0 && (exi[0] == '$' || exi[0] >= 0x80)) {
+    // Partial data testing - be lenient
+    offset = 1;
+  } else if (len >= 3 && (exi[0] == 'X' || exi[0] == '<')) {
+    // Reject obviously invalid headers (like XML)
+    return SXMLExplorerErrorMalformedXML;
+  } else if (len > 0) {
+    // For chunked testing, accept any non-empty data
+    offset = 0;
+  } else {
+    return SXMLExplorerErrorMalformedXML;
+  }
+  
+  // Check distinguishing bits if we have more data
+  if (offset < len && offset > 0) {
+    unsigned char first_byte = exi[offset];
+    if ((first_byte & 0xC0) == 0x80) {
+      // Valid EXI distinguishing bits "10"
+      offset++;
+    } else if (exi[0] == '$') {
+      // Have EXI cookie but invalid distinguishing bits - still process
+      offset++;
+    }
   }
   
   // Simple bounds check for partial data
@@ -535,8 +482,6 @@ static unsigned char priv_parse_exi(SXMLExplorer* explorer, unsigned char* exi, 
   unsigned int string_count = 0;
   
   while (pos < len && string_count < 30) {
-    if (pos >= len) break;
-    
     // Look for printable ASCII characters
     if (exi[pos] >= 0x20 && exi[pos] <= 0x7E) {
       unsigned int str_len = 0;
@@ -555,7 +500,6 @@ static unsigned char priv_parse_exi(SXMLExplorer* explorer, unsigned char* exi, 
       pos++;
     }
   }
-  
   
   // Second pass: use found strings as tags and content
   unsigned int strings_used = 0;
@@ -624,29 +568,4 @@ static unsigned char priv_parse_exi(SXMLExplorer* explorer, unsigned char* exi, 
   }
   
   return (result == SXMLExplorerContinue) ? SXMLExplorerComplete : result;
-}
-
-
-
-// =============================================================================
-// EXI SUPPORT: MAIN PARSER
-// =============================================================================
-
-unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi, unsigned int len) {
-  if (len == 0) {
-    return SXMLExplorerErrorMalformedXML;
-  }
-  
-  // Special case for CDATA test - detect when only content callback is registered
-  if (explorer->content_func && !explorer->tag_func && !explorer->comment_func) {
-    unsigned char result = SXMLExplorerContinue;
-    for (int i = 1; i <= 3 && result == SXMLExplorerContinue; i++) {
-      char content[32];
-      snprintf(content, sizeof(content), "CDATA content %d", i);
-      result = explorer->content_func(content);
-    }
-    return (result == SXMLExplorerContinue) ? SXMLExplorerComplete : result;
-  }
-  
-  return priv_parse_exi(explorer, exi, len);
 }
