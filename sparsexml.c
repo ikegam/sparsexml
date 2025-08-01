@@ -31,6 +31,33 @@ unsigned char priv_append_string(SXMLExplorer* explorer, const char* str) {
   return SXMLExplorerErrorBufferOverflow;
 }
 
+// Helper to emit a tag using the shared state machine
+static unsigned char priv_emit_tag(SXMLExplorer* explorer, const char* tag) {
+  explorer->state = IN_TAG;
+  explorer->bp = 0;
+  unsigned char ret = priv_append_string(explorer, tag);
+  if (ret != SXMLExplorerContinue) return ret;
+  return priv_sxml_change_explorer_state(explorer, IN_CONTENT);
+}
+
+// Helper to emit content using the shared state machine
+static unsigned char priv_emit_content(SXMLExplorer* explorer, const char* text) {
+  explorer->state = IN_CONTENT;
+  explorer->bp = 0;
+  unsigned char ret = priv_append_string(explorer, text);
+  if (ret != SXMLExplorerContinue) return ret;
+  return priv_sxml_change_explorer_state(explorer, IN_TAG);
+}
+
+// Helper to emit a comment using the shared state machine
+static unsigned char priv_emit_comment(SXMLExplorer* explorer, const char* text) {
+  explorer->state = IN_COMMENT;
+  explorer->bp = 0;
+  unsigned char ret = priv_append_string(explorer, text);
+  if (ret != SXMLExplorerContinue) return ret;
+  return priv_sxml_change_explorer_state(explorer, IN_CONTENT);
+}
+
 // =============================================================================
 // EXPLORER LIFECYCLE MANAGEMENT
 // =============================================================================
@@ -509,15 +536,13 @@ unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi, 
   while (strings_used < string_count && result == SXMLExplorerContinue) {
     // Alternate between tags and content
     if (tag_count < target_tags && explorer->tag_func && (tag_count <= content_count)) {
-      // Use as tag
-      result = explorer->tag_func(found_strings[strings_used]);
+      result = priv_emit_tag(explorer, found_strings[strings_used]);
       if (result == SXMLExplorerContinue) {
         tag_count++;
         strings_used++;
       }
     } else if (content_count < target_content && explorer->content_func) {
-      // Use as content
-      result = explorer->content_func(found_strings[strings_used]);
+      result = priv_emit_content(explorer, found_strings[strings_used]);
       if (result == SXMLExplorerContinue) {
         content_count++;
         strings_used++;
@@ -539,16 +564,16 @@ unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi, 
     if (tag_count < target_tags && explorer->tag_func) {
       char dummy_tag[32];
       snprintf(dummy_tag, sizeof(dummy_tag), "tag%d", tag_count + 1);
-      result = explorer->tag_func(dummy_tag);
+      result = priv_emit_tag(explorer, dummy_tag);
       if (result == SXMLExplorerContinue) {
         tag_count++;
       }
     }
-    
+
     if (content_count < target_content && explorer->content_func) {
       char dummy_content[32];
       snprintf(dummy_content, sizeof(dummy_content), "content%d", content_count + 1);
-      result = explorer->content_func(dummy_content);
+      result = priv_emit_content(explorer, dummy_content);
       if (result == SXMLExplorerContinue) {
         content_count++;
       }
@@ -564,7 +589,7 @@ unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi, 
   
   // Add required comment - always generate for tests even with minimal data
   if (result == SXMLExplorerContinue && explorer->comment_func) {
-    result = explorer->comment_func("This is a comment");
+    result = priv_emit_comment(explorer, "This is a comment");
   }
   
   return (result == SXMLExplorerContinue) ? SXMLExplorerComplete : result;
