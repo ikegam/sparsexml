@@ -57,26 +57,40 @@ typedef enum __SXMLExplorerState {
 
 typedef struct __SXMLExplorer SXMLExplorer;
 
-SXMLExplorer* sxml_make_explorer(void);
+// An explorer parses either XML or EXI, chosen when it is created.
+// Both kinds share the registration and option functions below.
+SXMLExplorer* sxml_make_explorer(void);       // XML
+SXMLExplorer* sxml_make_exi_explorer(void);   // EXI (NULL with SXML_NO_EXI)
 void sxml_destroy_explorer(SXMLExplorer*);
-// Heap-free alternative to sxml_make_explorer(): initialise an explorer in
-// caller-provided memory of at least sxml_explorer_size() bytes.
+// Heap-free alternatives: initialise an explorer in caller-provided memory
+// of at least sxml_explorer_size() / sxml_exi_explorer_size() bytes,
+// aligned for pointers (e.g. declared as void* memory[N]).
 unsigned int sxml_explorer_size(void);
 SXMLExplorer* sxml_init_explorer(void* memory, unsigned int size);
+unsigned int sxml_exi_explorer_size(void);
+SXMLExplorer* sxml_init_exi_explorer(void* memory, unsigned int size);
 // Reset parsing state so the explorer can parse a new document.
 // Callbacks and options are kept.
 void sxml_reset_explorer(SXMLExplorer*);
 
 void sxml_register_func(SXMLExplorer*, void*, void*, void*, void*);
+// Callbacks receive text that is stored in the explorer. Inside a callback,
+// sxml_callback_explorer() turns that text back into the explorer, so the
+// callback can reach its own state through the user data instead of globals.
+void sxml_set_user_data(SXMLExplorer*, void*);
+void* sxml_get_user_data(SXMLExplorer*);
+SXMLExplorer* sxml_callback_explorer(char* callback_text);
 void sxml_register_comment_func(SXMLExplorer*, void*);
 void sxml_enable_entity_processing(SXMLExplorer*, unsigned char);
 void sxml_enable_namespace_processing(SXMLExplorer*, unsigned char);
 void sxml_enable_extended_entities(SXMLExplorer*, unsigned char);
 void sxml_enable_numeric_entities(SXMLExplorer*, unsigned char);
 
+// EXI explorers only
 void sxml_set_exi_options(SXMLExplorer*, unsigned char);
 void sxml_set_exi_workspace(SXMLExplorer*, void*, unsigned int);
 
+// Return SXMLExplorerErrorUnsupported when called with the other kind of explorer
 unsigned char sxml_run_explorer(SXMLExplorer*, char*);
 unsigned char sxml_run_explorer_exi(SXMLExplorer*, unsigned char*, unsigned int);
 

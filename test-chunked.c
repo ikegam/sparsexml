@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include "sparsexml.h"
+#include "test-log.h"
 
 static unsigned char feed_chunks(SXMLExplorer* ex, const char* xml, size_t chunk_size) {
     size_t len = strlen(xml);
@@ -137,43 +138,29 @@ void test_chunked_sitemap(void) {
 
 
 // Splitting the input at any position must not change the events
-static char chunk_log[16384];
-static unsigned char chunk_record(char kind, char* text) {
-    size_t len = strlen(chunk_log);
-    snprintf(chunk_log + len, sizeof(chunk_log) - len, "%c[%s]", kind, text);
-    return SXMLExplorerContinue;
-}
-static unsigned char chunk_on_tag(char* s) { return chunk_record('T', s); }
-static unsigned char chunk_on_content(char* s) { return chunk_record('C', s); }
-static unsigned char chunk_on_key(char* s) { return chunk_record('K', s); }
-static unsigned char chunk_on_value(char* s) { return chunk_record('V', s); }
-static unsigned char chunk_on_comment(char* s) { return chunk_record('M', s); }
+static TestLog whole_log, chunk_log;
 
-static void parse_in_chunks(const char* xml, size_t chunk_size) {
+static void parse_in_chunks(const char* xml, size_t chunk_size, TestLog* log) {
     SXMLExplorer* ex = sxml_make_explorer();
-    chunk_log[0] = '\0';
     sxml_enable_entity_processing(ex, 1);
     sxml_enable_namespace_processing(ex, 1);
-    sxml_register_func(ex, chunk_on_tag, chunk_on_content, chunk_on_key, chunk_on_value);
-    sxml_register_comment_func(ex, chunk_on_comment);
+    test_log_attach(ex, log, TEST_LOG_COMMENTS);
     CU_ASSERT_EQUAL(feed_chunks(ex, xml, chunk_size), SXMLExplorerComplete);
     sxml_destroy_explorer(ex);
 }
 
 void test_chunk_boundaries_do_not_matter(void) {
-    static char whole[16384];
     size_t chunk_size;
     char* xml = read_file_to_string("test-data/test-features.xml");
     CU_ASSERT_PTR_NOT_NULL_FATAL(xml);
 
-    parse_in_chunks(xml, strlen(xml));
-    strcpy(whole, chunk_log);
-    CU_ASSERT(strstr(whole, "M[ Feature coverage for the EXI decoder ]") != NULL);
-    CU_ASSERT(strstr(whole, "T[empty]T[/empty]") != NULL);
+    parse_in_chunks(xml, strlen(xml), &whole_log);
+    CU_ASSERT(test_log_find(&whole_log, "M[ Feature coverage for the EXI decoder ]") >= 0);
+    CU_ASSERT(strstr(test_log_string(&whole_log), "T[empty]T[/empty]") != NULL);
 
     for (chunk_size = 1; chunk_size <= 16; chunk_size++) {
-        parse_in_chunks(xml, chunk_size);
-        CU_ASSERT_STRING_EQUAL(chunk_log, whole);
+        parse_in_chunks(xml, chunk_size, &chunk_log);
+        CU_ASSERT_STRING_EQUAL(test_log_string(&chunk_log), test_log_string(&whole_log));
     }
     free(xml);
 }

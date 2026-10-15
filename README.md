@@ -14,6 +14,7 @@ Then include `sparsexml.h` in your code. No build system or external dependencie
 ## Features
 - **Minimal Memory**: Fixed buffers inside the parser, no allocation while parsing XML
 - **Heap-free Option**: Place the parser in your own memory with `sxml_init_explorer()`
+- **No Globals**: All state lives in the explorer, callbacks reach their own data through it
 - **Streaming**: Feed XML in chunks split at any position
 - **Event-Driven**: SAX-style callbacks for tags, attributes, content, comments
 - **Entity Processing**: Standard XML, numeric (as UTF-8), and HTML entities
@@ -46,6 +47,33 @@ int main() {
     return 0;
 }
 ```
+
+## Explorers
+An explorer holds all parsing state and is passed to every function. It is created for one input
+format:
+
+| Format | Create | Heap-free | Run |
+|--------|--------|-----------|-----|
+| XML | `sxml_make_explorer()` | `sxml_init_explorer(mem, size)` | `sxml_run_explorer()` |
+| EXI | `sxml_make_exi_explorer()` | `sxml_init_exi_explorer(mem, size)` | `sxml_run_explorer_exi()` |
+
+Both kinds share the same callbacks and options (`sxml_register_func()`, `sxml_enable_*()`), and
+running an explorer with the other format returns `SXMLExplorerErrorUnsupported`.
+Internally each kind starts with the common part, so the same functions work on both.
+
+Callbacks can keep their state in the explorer instead of globals:
+```c
+unsigned char count_tags(char* name) {
+    unsigned int* count = sxml_get_user_data(sxml_callback_explorer(name));
+    (*count)++;
+    return SXMLExplorerContinue;
+}
+
+unsigned int count = 0;
+sxml_set_user_data(ex, &count);
+sxml_register_func(ex, count_tags, NULL, NULL, NULL);
+```
+`sxml_callback_explorer()` only works on the text a callback received.
 
 ## Events
 | Callback | Called with |
@@ -92,16 +120,20 @@ make -C test-data check   # verify the committed .exi files are reproducible
 
 ## Memory Requirements
 - **RAM (XML)**: `sxml_explorer_size()` bytes (~1.2KB), no heap use while parsing
-- **RAM (EXI)**: a workspace for string tables and learned grammars, 32KB by default
-  (`SXML_EXI_WORKSPACE_SIZE`), allocated per call or supplied with `sxml_set_exi_workspace()`
-- **Flash**: ~3.7KB XML only (`-DSXML_NO_EXI`), ~11KB with EXI (x86-64, `-Os`)
+- **RAM (EXI)**: `sxml_exi_explorer_size()` bytes (~1.2KB) plus a workspace for string tables and
+  learned grammars, 32KB by default (`SXML_EXI_WORKSPACE_SIZE`), allocated per call or supplied
+  with `sxml_set_exi_workspace()`
+- **Flash**: ~4.2KB XML only (`-DSXML_NO_EXI`), ~9.4KB with EXI (x86-64, `-Os`)
 
-Without heap:
+Without heap (memory must be aligned for pointers, hence `void*` arrays):
 ```c
-static unsigned char parser_memory[1280];
-static unsigned char exi_workspace[8192];
+static void* parser_memory[1280 / sizeof(void*)];
 SXMLExplorer* ex = sxml_init_explorer(parser_memory, sizeof(parser_memory));
-sxml_set_exi_workspace(ex, exi_workspace, sizeof(exi_workspace));
+
+static void* exi_memory[1280 / sizeof(void*)];
+static void* exi_workspace[8192 / sizeof(void*)];
+SXMLExplorer* exi = sxml_init_exi_explorer(exi_memory, sizeof(exi_memory));
+sxml_set_exi_workspace(exi, exi_workspace, sizeof(exi_workspace));
 ```
 
 ## Supported XML Features
@@ -120,6 +152,8 @@ sxml_set_exi_workspace(ex, exi_workspace, sizeof(exi_workspace));
 ## EXI Support
 Decode W3C EXI 1.0 streams that were encoded without a schema (e.g. `exificient -encode -noSchema`):
 ```c
+SXMLExplorer* explorer = sxml_make_exi_explorer();
+sxml_register_func(explorer, on_tag, on_content, NULL, NULL);
 unsigned char result = sxml_run_explorer_exi(explorer, exi_data, exi_size);
 ```
 EXI events go to the same callbacks as XML. Names are reported as local names unless the stream

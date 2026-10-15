@@ -6,7 +6,7 @@ LDFLAGS ?= -Wl,-z,noexecstack
 SRC = sparsexml.c
 OBJ = $(SRC:.c=.o)
 
-TEST_SRC = test.c test-private.c test-oss-xml.c test-entities.c test-exi.c test-chunked.c
+TEST_SRC = test.c test-private.c test-oss-xml.c test-entities.c test-exi.c test-chunked.c test-log.c
 TEST_OBJ = $(TEST_SRC:.c=.o)
 
 EXAMPLES_SRC = examples/simple.c
@@ -46,6 +46,8 @@ bench/bench: $(OBJ) $(BENCH_OBJ)
 
 %.o: %.c sparsexml.h sparsexml-priv.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+$(TEST_OBJ): test-log.h
 
 clean:
 	rm -f $(OBJ) $(TEST_OBJ) $(EXAMPLES_OBJ) $(BENCH_OBJ)
