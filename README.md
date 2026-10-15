@@ -131,6 +131,10 @@ Data longer than `SXMLElementLength - 1` (1023) bytes is truncated.
 
 Not supported: DTD validation, entity declarations, namespace URI resolution.
 
+The parser does not check well-formedness either: mismatched or unclosed tags are reported as
+they appear (`<a></b>` gives `a`, `/b`). Validation is left out of the device on purpose; checks
+against the peer's schema belong in the development environment (see [FUTURE.md](FUTURE.md)).
+
 ## Streaming XML
 The explorer keeps all state, so XML can arrive in pieces:
 ```c
