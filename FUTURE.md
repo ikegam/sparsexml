@@ -12,6 +12,19 @@ firmware is built. The schema of the peer is still useful, but on the host:
 > The schema never goes to the device. Only constants, tables and checks derived from it are
 > used, at build time and in host tests.
 
+The helpers do not implement the specifications themselves. XML Schema alone is hundreds of
+pages, and a partial reimplementation would disagree with real validators in the corner cases
+that matter. Each helper builds on an established, complete implementation instead and only
+turns its result into something SparseXML can use:
+
+- **libxml2** for XML and XML Schema: validation (`xmllint`) and the compiled schema model that
+  the generators read.
+- **EXIficient** for EXI: encoding the test data (already used by `test-data/`) and the
+  schema-informed grammars.
+
+SparseXML stays a small parser on the device; correctness against the specifications comes
+from these tools on the host.
+
 The steps below build on each other and can be adopted one at a time.
 
 ### 1. Validate messages on the host
@@ -29,8 +42,11 @@ them correctly?" in one place. It needs no new code in the library.
 
 ### 2. Generate a header from the schema
 
-A host tool (for example `tools/sxml-schema`, written in Python) reads the XSD and writes
-`peer_schema.h` with:
+A host tool (for example `tools/sxml-schema`) loads the XSD with libxml2 and writes
+`peer_schema.h` from the schema that libxml2 has parsed and resolved. Includes, imports,
+substitution groups, type derivation and occurrence limits are then interpreted exactly as
+`xmllint` interprets them in step 1, and the tool itself only walks the result. It can be written
+in C against libxml2 or in Python with lxml, which wraps libxml2. The header contains:
 
 - **Name IDs**: an enum of element and attribute names (`PEER_TAG_temperature`, ...) and a
   name-to-ID table. Applications switch on IDs, so a misspelt element name becomes a compile
@@ -47,7 +63,11 @@ On the device this adds at most the name-to-ID lookup, and nothing if it is not 
 
 Open questions:
 
-- Which XSD subset to support (sequence/choice/occurrence limits, simple type facets).
+- How much of libxml2's compiled schema is reachable through its public API
+  (`schemasInternals.h`), and whether some information has to be read from the XSD document
+  with libxml2's tree API instead.
+- Which parts of the schema to turn into tables (sequence/choice/occurrence limits, simple type
+  facets); the rest is still checked on the host by step 1.
 - Whether callbacks should receive IDs directly (a new registration function) or applications
   look names up themselves.
 
