@@ -122,8 +122,9 @@ Decode W3C EXI 1.0 streams that were encoded without a schema (e.g. `exificient 
 ```c
 unsigned char result = sxml_run_explorer_exi(explorer, exi_data, exi_size);
 ```
-EXI events go to the same callbacks as XML. Element and attribute names are reported as local names,
-`xsi:type` values as the local name of the type. The whole stream must be in memory; a truncated
+EXI events go to the same callbacks as XML. Names are reported as local names unless the stream
+preserves prefixes (`SXML_EXI_PRESERVE_PREFIXES`); then they are qualified like in XML (`ns:tag`,
+`xml:lang`, `xsi:type` values as `t:Type`), and namespace processing removes the prefix from tags. The whole stream must be in memory; a truncated
 stream returns `SXMLExplorerErrorMalformedXML`.
 
 EXI options are not stored in the stream by default, so the decoder must be told the options the

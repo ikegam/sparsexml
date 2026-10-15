@@ -30,13 +30,26 @@ unsigned char priv_append_string(SXMLExplorer* explorer, const char* str) {
   return SXMLExplorerErrorBufferOverflow;
 }
 
-// Copy a string into the buffer, truncating it if necessary
-static void priv_set_buffer(SXMLExplorer* explorer, const char* prefix, const char* str) {
-  explorer->bp = 0;
-  explorer->buffer[0] = '\0';
-  while (*prefix && explorer->bp < SXMLElementLength - 1) {
-    explorer->buffer[explorer->bp++] = *prefix++;
+// Fill the buffer with head followed by str, truncating if necessary.
+// str may point into the buffer itself.
+static void priv_set_buffer(SXMLExplorer* explorer, const char* head, const char* str) {
+  unsigned int head_len = strlen(head);
+  unsigned int str_len = strlen(str);
+
+  if (head_len > SXMLElementLength - 1) {
+    head_len = SXMLElementLength - 1;
   }
+  if (str_len > SXMLElementLength - 1 - head_len) {
+    str_len = SXMLElementLength - 1 - head_len;
+  }
+  memmove(explorer->buffer + head_len, str, str_len);
+  memcpy(explorer->buffer, head, head_len);
+  explorer->bp = head_len + str_len;
+  explorer->buffer[explorer->bp] = '\0';
+}
+
+// Append a string to the buffer, truncating if necessary
+static void priv_add_buffer(SXMLExplorer* explorer, const char* str) {
   while (*str && explorer->bp < SXMLElementLength - 1) {
     explorer->buffer[explorer->bp++] = *str++;
   }
@@ -268,27 +281,26 @@ unsigned char priv_sxml_process_extended_entity(SXMLExplorer* explorer, char* en
 }
 
 // =============================================================================
-// XML PARSING: STATE MANAGEMENT
+// EVENT DELIVERY (shared by the XML parser and the EXI decoder)
 // =============================================================================
 
-// Report the tag name in the buffer and remember it for <empty/> elements
-static unsigned char priv_sxml_emit_tag(SXMLExplorer* explorer) {
-  char* name = explorer->buffer;
-
-  if (explorer->enable_namespace_processing) {
-    char* colon_pos = strchr(name, ':');
-    if (colon_pos != NULL) {
-      if (name[0] == '/') {
-        // "/ns:tag" -> "/tag"
-        memmove(name + 1, colon_pos + 1, strlen(colon_pos + 1) + 1);
-      } else {
-        name = colon_pos + 1;
-      }
-    }
+// Deliver text to a callback through the buffer
+static unsigned char priv_emit(SXMLExplorer* explorer, unsigned char (*func)(char*), const char* text) {
+  if (func == NULL) {
+    return SXMLExplorerContinue;
   }
+  if (text != explorer->buffer) {
+    priv_set_buffer(explorer, "", text);
+  }
+  return func(explorer->buffer);
+}
 
-  {
-    // Names longer than SXMLNameLength are truncated
+// Deliver a start ("name") or end ("/name") tag. The namespace prefix is
+// either part of name ("ns:tag") or given separately (NULL if unknown), and
+// is removed when namespace processing is enabled.
+static unsigned char priv_emit_tag(SXMLExplorer* explorer, unsigned char end_tag, const char* prefix, const char* name) {
+  if (!end_tag && prefix == NULL) {
+    // Remember the start tag to report the end of an <empty/> element
     unsigned int i;
     for (i = 0; i < SXMLNameLength - 1 && name[i] != '\0'; i++) {
       explorer->tag_name[i] = name[i];
@@ -296,11 +308,38 @@ static unsigned char priv_sxml_emit_tag(SXMLExplorer* explorer) {
     explorer->tag_name[i] = '\0';
   }
 
-  if (explorer->tag_func == NULL) {
-    return SXMLExplorerContinue;
+  if (explorer->enable_namespace_processing) {
+    const char* colon_pos = strchr(name, ':');
+    if (colon_pos != NULL) {
+      name = colon_pos + 1;
+    }
+    prefix = NULL;
   }
-  return explorer->tag_func(name);
+
+  if (prefix != NULL && prefix[0] != '\0') {
+    priv_set_buffer(explorer, end_tag ? "/" : "", prefix);
+    priv_add_buffer(explorer, ":");
+    priv_add_buffer(explorer, name);
+  } else {
+    priv_set_buffer(explorer, end_tag ? "/" : "", name);
+  }
+  return priv_emit(explorer, explorer->tag_func, explorer->buffer);
 }
+
+// Map the last callback result to the value returned by sxml_run_explorer*()
+static unsigned char priv_result(unsigned char result) {
+  if (result == SXMLExplorerContinue) {
+    return SXMLExplorerComplete;
+  }
+  if (result == SXMLExplorerStop) {
+    return SXMLExplorerInterrupted;
+  }
+  return result;
+}
+
+// =============================================================================
+// XML PARSING: STATE MANAGEMENT
+// =============================================================================
 
 unsigned char priv_sxml_change_explorer_state(SXMLExplorer* explorer, SXMLExplorerState state) {
   unsigned char ret = SXMLExplorerContinue;
@@ -308,20 +347,19 @@ unsigned char priv_sxml_change_explorer_state(SXMLExplorer* explorer, SXMLExplor
 
   if (from == IN_ATTRIBUTE_VALUE && state == IN_ATTRIBUTE_KEY) {
     // Attribute values are reported even when empty
-    if (explorer->attribute_value_func != NULL) {
-      ret = explorer->attribute_value_func(explorer->buffer);
-    }
+    ret = priv_emit(explorer, explorer->attribute_value_func, explorer->buffer);
   } else if (explorer->bp > 0) {
     if (from == IN_TAG && (state == IN_CONTENT || state == IN_ATTRIBUTE_KEY)) {
-      ret = priv_sxml_emit_tag(explorer);
-    } else if ((from == IN_CONTENT || from == INITIAL) && state == IN_TAG && explorer->content_func != NULL) {
-      ret = explorer->content_func(explorer->buffer);
-    } else if (from == IN_ATTRIBUTE_KEY && state == IN_ATTRIBUTE_EQUAL && explorer->attribute_key_func != NULL) {
-      ret = explorer->attribute_key_func(explorer->buffer);
-    } else if (from == IN_COMMENT && state == IN_CONTENT && explorer->comment_func != NULL) {
-      ret = explorer->comment_func(explorer->buffer);
-    } else if (from == IN_CDATA && state == IN_CONTENT && explorer->content_func != NULL) {
-      ret = explorer->content_func(explorer->buffer);
+      unsigned char end_tag = explorer->buffer[0] == '/';
+      ret = priv_emit_tag(explorer, end_tag, NULL, explorer->buffer + end_tag);
+    } else if ((from == IN_CONTENT || from == INITIAL) && state == IN_TAG) {
+      ret = priv_emit(explorer, explorer->content_func, explorer->buffer);
+    } else if (from == IN_ATTRIBUTE_KEY && state == IN_ATTRIBUTE_EQUAL) {
+      ret = priv_emit(explorer, explorer->attribute_key_func, explorer->buffer);
+    } else if (from == IN_COMMENT && state == IN_CONTENT) {
+      ret = priv_emit(explorer, explorer->comment_func, explorer->buffer);
+    } else if (from == IN_CDATA && state == IN_CONTENT) {
+      ret = priv_emit(explorer, explorer->content_func, explorer->buffer);
     }
   }
 
@@ -339,9 +377,8 @@ static unsigned char priv_sxml_emit_self_closing(SXMLExplorer* explorer) {
   unsigned char ret = SXMLExplorerContinue;
 
   explorer->self_closing = 0;
-  if (explorer->tag_func != NULL && explorer->tag_name[0] != '\0') {
-    priv_set_buffer(explorer, "/", explorer->tag_name);
-    ret = explorer->tag_func(explorer->buffer);
+  if (explorer->tag_name[0] != '\0') {
+    ret = priv_emit_tag(explorer, 1, NULL, explorer->tag_name);
     explorer->bp = 0;
     explorer->buffer[0] = '\0';
   }
@@ -530,13 +567,7 @@ unsigned char sxml_run_explorer(SXMLExplorer* explorer, char *xml) {
     result = priv_sxml_feed_char(explorer, *xml++);
   }
 
-  if (result == SXMLExplorerContinue) {
-    return SXMLExplorerComplete;
-  }
-  if (result == SXMLExplorerStop) {
-    return SXMLExplorerInterrupted;
-  }
-  return result;
+  return priv_result(result);
 }
 
 // =============================================================================
@@ -605,12 +636,15 @@ struct ExiUri {
   unsigned int id;
   ExiQName* names;
   unsigned int name_count;
+  ExiNode* prefixes;
   unsigned int prefix_count;
 };
 
 typedef struct {
   ExiQName* qname;
+  const char* prefix;    // NULL if prefixes are not preserved or unknown
   unsigned char in_content;
+  unsigned char tag_pending; // Start tag not reported yet (NS may follow)
 } ExiFrame;
 
 typedef struct {
@@ -782,13 +816,25 @@ static char* exi_read_string(ExiDecoder* d, unsigned char keep) {
   return exi_read_chars(d, count, keep);
 }
 
-static ExiUri* exi_add_uri(ExiDecoder* d, unsigned int prefix_count) {
+static void exi_add_prefix(ExiDecoder* d, ExiUri* uri, const char* prefix) {
+  ExiNode* node = exi_alloc(d, sizeof(ExiNode));
+  if (node != NULL) {
+    node->str = prefix;
+    node->next = uri->prefixes;
+    uri->prefixes = node;
+    uri->prefix_count++;
+  }
+}
+
+static ExiUri* exi_add_uri(ExiDecoder* d, const char* prefix) {
   ExiUri* uri = exi_alloc(d, sizeof(ExiUri));
   if (uri != NULL) {
     uri->id = d->uri_count++;
-    uri->prefix_count = prefix_count;
     uri->next = d->uris;
     d->uris = uri;
+    if (prefix != NULL) {
+      exi_add_prefix(d, uri, prefix);
+    }
   }
   return uri;
 }
@@ -828,7 +874,7 @@ static ExiUri* exi_decode_uri(ExiDecoder* d) {
     if (exi_read_string(d, 0) == NULL) {
       return NULL;
     }
-    return exi_add_uri(d, 0);
+    return exi_add_uri(d, NULL);
   }
   id--;
   if (id >= d->uri_count) {
@@ -868,25 +914,51 @@ static ExiQName* exi_decode_qname(ExiDecoder* d) {
   return uri ? exi_decode_local_name(d, uri) : NULL;
 }
 
-// Prefix of a QName, only present when prefixes are preserved
-static void exi_decode_qname_prefix(ExiDecoder* d, ExiQName* qname) {
-  if ((d->options & SXML_EXI_PRESERVE_PREFIXES) && qname->uri->id != 0 &&
-      qname->uri->prefix_count > 1) {
-    exi_read_bits(d, exi_bits_for(qname->uri->prefix_count));
+// Prefix of a QName, only present when prefixes are preserved.
+// Returns NULL when prefixes are not preserved or the prefix is unknown.
+static const char* exi_decode_qname_prefix(ExiDecoder* d, ExiQName* qname) {
+  ExiUri* uri = qname->uri;
+  unsigned int id = 0;
+
+  if (!(d->options & SXML_EXI_PRESERVE_PREFIXES)) {
+    return NULL;
   }
+  if (uri->id == 0) {
+    return "";
+  }
+  if (uri->prefix_count == 0) {
+    return NULL;  // Declared by a following NS event
+  }
+  if (uri->prefix_count > 1) {
+    id = exi_read_bits(d, exi_bits_for(uri->prefix_count));
+  }
+  return d->error ? NULL : exi_find_string(d, uri->prefixes, uri->prefix_count, id);
 }
 
-static void exi_decode_namespace_declaration(ExiDecoder* d) {
+// NS event, sets the prefix of the current element when local-element-ns is true
+static void exi_decode_namespace_declaration(ExiDecoder* d, ExiFrame* frame) {
   ExiUri* uri = exi_decode_uri(d);
+  unsigned int id;
+  const char* prefix;
+
   if (uri == NULL) {
     return;
   }
-  if (exi_read_bits(d, exi_bits_for(uri->prefix_count + 1)) == 0 && !d->error) {
-    if (exi_read_string(d, 0) != NULL) {
-      uri->prefix_count++;
-    }
+  id = exi_read_bits(d, exi_bits_for(uri->prefix_count + 1));
+  if (d->error) {
+    return;
   }
-  exi_read_boolean(d); // local-element-ns
+  if (id == 0) {
+    prefix = exi_read_string(d, 1);
+    if (prefix != NULL) {
+      exi_add_prefix(d, uri, prefix);
+    }
+  } else {
+    prefix = exi_find_string(d, uri->prefixes, uri->prefix_count, id - 1);
+  }
+  if (exi_read_boolean(d) && prefix != NULL && !d->error) {
+    frame->prefix = prefix;
+  }
 }
 
 // String value with the string table (spec 7.3.3)
@@ -938,12 +1010,26 @@ static void exi_learn(ExiDecoder* d, ExiGrammar* grammar, unsigned char type, Ex
   }
 }
 
-static unsigned char exi_callback(ExiDecoder* d, unsigned char (*func)(char*), const char* prefix, const char* text) {
-  if (func == NULL || d->error) {
+// Report "prefix:local" (or "local") to an attribute callback
+static unsigned char exi_emit_qname(ExiDecoder* d, unsigned char (*func)(char*), const char* prefix, const char* local) {
+  SXMLExplorer* explorer = d->explorer;
+
+  if (prefix != NULL && prefix[0] != '\0') {
+    priv_set_buffer(explorer, "", prefix);
+    priv_add_buffer(explorer, ":");
+    priv_add_buffer(explorer, local);
+    local = explorer->buffer;
+  }
+  return priv_emit(explorer, func, local);
+}
+
+// Report the start tag once the NS events that may set its prefix are read
+static unsigned char exi_flush_start_tag(ExiDecoder* d, ExiFrame* frame) {
+  if (!frame->tag_pending) {
     return SXMLExplorerContinue;
   }
-  priv_set_buffer(d->explorer, prefix, text);
-  return func(d->explorer->buffer);
+  frame->tag_pending = 0;
+  return priv_emit_tag(d->explorer, 0, frame->prefix, frame->qname->local);
 }
 
 static unsigned char exi_start_element(ExiDecoder* d, ExiQName* qname) {
@@ -961,27 +1047,29 @@ static unsigned char exi_start_element(ExiDecoder* d, ExiQName* qname) {
     exi_learn(d, &qname->content, EXI_PROD_EE, NULL);
     qname->ready = 1;
   }
-  exi_decode_qname_prefix(d, qname);
-
   frame = &d->stack[d->depth++];
   frame->qname = qname;
+  frame->prefix = exi_decode_qname_prefix(d, qname);
   frame->in_content = 0;
-  return exi_callback(d, d->explorer->tag_func, "", qname->local);
+  frame->tag_pending = 1;
+  return SXMLExplorerContinue;
 }
 
 static unsigned char exi_end_element(ExiDecoder* d) {
-  ExiQName* qname = d->stack[--d->depth].qname;
-  return exi_callback(d, d->explorer->tag_func, "/", qname->local);
+  ExiFrame* frame = &d->stack[--d->depth];
+  return priv_emit_tag(d->explorer, 1, frame->prefix, frame->qname->local);
 }
 
 static unsigned char exi_attribute(ExiDecoder* d, ExiQName* qname) {
+  const char* prefix;
   const char* value;
+  const char* value_prefix = NULL;
   unsigned char ret;
 
   if (qname == NULL) {
     return SXMLExplorerContinue;
   }
-  exi_decode_qname_prefix(d, qname);
+  prefix = exi_decode_qname_prefix(d, qname);
 
   if (qname->uri->id == 2 && qname->id == 1 && !(d->options & SXML_EXI_PRESERVE_LEXICAL_VALUES)) {
     // xsi:type carries a QName
@@ -989,20 +1077,20 @@ static unsigned char exi_attribute(ExiDecoder* d, ExiQName* qname) {
     if (type == NULL) {
       return SXMLExplorerContinue;
     }
-    exi_decode_qname_prefix(d, type);
+    value_prefix = exi_decode_qname_prefix(d, type);
     value = type->local;
   } else {
     value = exi_decode_value(d, qname);
   }
-  if (value == NULL) {
+  if (value == NULL || d->error) {
     return SXMLExplorerContinue;
   }
 
-  ret = exi_callback(d, d->explorer->attribute_key_func, "", qname->local);
+  ret = exi_emit_qname(d, d->explorer->attribute_key_func, prefix, qname->local);
   if (ret != SXMLExplorerContinue) {
     return ret;
   }
-  return exi_callback(d, d->explorer->attribute_value_func, "", value);
+  return exi_emit_qname(d, d->explorer->attribute_value_func, value_prefix, value);
 }
 
 static unsigned char exi_characters(ExiDecoder* d, ExiQName* context) {
@@ -1010,7 +1098,7 @@ static unsigned char exi_characters(ExiDecoder* d, ExiQName* context) {
   if (value == NULL || value[0] == '\0') {
     return SXMLExplorerContinue;
   }
-  return exi_callback(d, d->explorer->content_func, "", value);
+  return priv_emit(d->explorer, d->explorer->content_func, value);
 }
 
 // Third level events: CM and PI
@@ -1026,10 +1114,10 @@ static unsigned char exi_misc(ExiDecoder* d) {
     if (exi_read_string(d, 0) == NULL) {
       return SXMLExplorerContinue;
     }
-    if (d->explorer->comment_func == NULL || d->explorer->bp == 0) {
+    if (d->explorer->bp == 0) {
       return SXMLExplorerContinue;
     }
-    return d->explorer->comment_func(d->explorer->buffer);
+    return priv_emit(d->explorer, d->explorer->comment_func, d->explorer->buffer);
   }
   if (pis) {
     exi_read_string(d, 0);  // target
@@ -1054,11 +1142,21 @@ static unsigned char exi_undeclared_event(ExiDecoder* d, ExiFrame* frame, ExiGra
   unsigned char misc = (d->options & (SXML_EXI_PRESERVE_COMMENTS | SXML_EXI_PRESERVE_PIS)) != 0;
   ExiQName* qname = frame->qname;
   unsigned int code;
+  unsigned char ret;
 
   if (!frame->in_content) {
     code = exi_read_bits(d, exi_bits_for(4 + prefixes + dtd + misc));
     if (d->error) {
       return SXMLExplorerContinue;
+    }
+    if (prefixes && code == 2) {
+      // NS, may still set the prefix of the pending start tag
+      exi_decode_namespace_declaration(d, frame);
+      return SXMLExplorerContinue;
+    }
+    ret = exi_flush_start_tag(d, frame);
+    if (ret != SXMLExplorerContinue) {
+      return ret;
     }
     if (code == 0) {
       // EE
@@ -1084,14 +1182,7 @@ static unsigned char exi_undeclared_event(ExiDecoder* d, ExiFrame* frame, ExiGra
       }
       return exi_attribute(d, at);
     }
-    code -= 2;
-    if (prefixes) {
-      if (code == 0) {
-        exi_decode_namespace_declaration(d);
-        return SXMLExplorerContinue;
-      }
-      code--;
-    }
+    code -= 2 + prefixes;
   } else {
     code = exi_read_bits(d, exi_bits_for(2 + dtd + misc));
     if (d->error) {
@@ -1141,12 +1232,17 @@ static unsigned char exi_element_event(ExiDecoder* d) {
   ExiGrammar* grammar = frame->in_content ? &frame->qname->content : &frame->qname->start_tag;
   unsigned int code = exi_read_bits(d, exi_bits_for(grammar->count + 1));
   ExiProd* prod;
+  unsigned char ret;
 
   if (d->error) {
     return SXMLExplorerContinue;
   }
   if (code >= grammar->count) {
     return exi_undeclared_event(d, frame, grammar);
+  }
+  ret = exi_flush_start_tag(d, frame);
+  if (ret != SXMLExplorerContinue) {
+    return ret;
   }
 
   for (prod = grammar->prods; code > 0; code--) {
@@ -1210,12 +1306,12 @@ static unsigned char exi_decode(ExiDecoder* d) {
   unsigned int i;
 
   // Initial string table (spec appendix D)
-  exi_add_uri(d, 1);
-  uri = exi_add_uri(d, 1);
+  exi_add_uri(d, "");
+  uri = exi_add_uri(d, "xml");
   for (i = 0; uri && i < 4; i++) {
     exi_add_qname(d, uri, exi_xml_names[i]);
   }
-  uri = exi_add_uri(d, 1);
+  uri = exi_add_uri(d, "xsi");
   for (i = 0; uri && i < 2; i++) {
     exi_add_qname(d, uri, exi_xsi_names[i]);
   }
@@ -1250,16 +1346,7 @@ static unsigned char exi_decode(ExiDecoder* d) {
     result = exi_misc(d);
   }
 
-  if (d->error) {
-    return d->error;
-  }
-  if (result == SXMLExplorerContinue) {
-    return SXMLExplorerComplete;
-  }
-  if (result == SXMLExplorerStop) {
-    return SXMLExplorerInterrupted;
-  }
-  return result;
+  return d->error ? d->error : priv_result(result);
 }
 
 unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer, unsigned char* exi, unsigned int len) {

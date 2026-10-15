@@ -29,6 +29,7 @@ static unsigned char sitemap_on_tag(char *name) {
 }
 
 static unsigned char sitemap_on_content(char *content) {
+  (void)content;
   sitemap_content_count++;
   return SXMLExplorerContinue;
 }
@@ -84,6 +85,7 @@ static unsigned int atom_comment_count = 0;
 static unsigned char atom_found_entities = 0;
 
 static unsigned char atom_on_tag(char *name) {
+  (void)name;
   atom_tag_count++;
   return SXMLExplorerContinue;
 }
@@ -169,6 +171,7 @@ static unsigned char complex_on_content(char *content) {
 }
 
 static unsigned char complex_on_comment(char *comment) {
+  (void)comment;
   complex_comment_count++;
   return SXMLExplorerContinue;
 }
@@ -225,11 +228,13 @@ void test_complex_xml_with_cdata_and_entities(void) {
 static unsigned int error_tag_count = 0;
 
 static unsigned char error_on_tag(char *name) {
+  (void)name;
   error_tag_count++;
   return SXMLExplorerContinue;
 }
 
 static unsigned char error_on_content(char *content) {
+  (void)content;
   return SXMLExplorerContinue;
 }
 
@@ -474,6 +479,7 @@ static unsigned int large_doc_attr_count = 0;
 static unsigned int large_doc_comment_count = 0;
 
 static unsigned char large_doc_on_tag(char* name) {
+    (void)name;
     // For now, just count tags without strict checking to see what we get
     large_doc_tag_index++;
     // Debug: print actual tag names to understand the parsing order
@@ -492,11 +498,13 @@ static unsigned char large_doc_on_content(char* content) {
 }
 
 static unsigned char large_doc_on_attr_key(char* key) {
+    (void)key;
     large_doc_attr_count++;
     return SXMLExplorerContinue;
 }
 
 static unsigned char large_doc_on_attr_val(char* val) {
+    (void)val;
     return SXMLExplorerContinue;
 }
 

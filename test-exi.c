@@ -15,8 +15,9 @@
  *
  * Decoding an .exi file must produce the same events as parsing the
  * original XML. Namespace declarations and whitespace-only text are not
- * compared, and prefixes are removed from names, because EXI does not keep
- * them unless asked to. EXIficient drops xsi:schemaLocation and joins the
+ * compared. Prefixes are removed from names (namespace processing), because
+ * EXI does not keep them unless asked to; with SXML_EXI_PRESERVE_PREFIXES
+ * the qualified names are compared as well. EXIficient drops xsi:schemaLocation and joins the
  * text around comments it does not preserve, so the comparison does too.
  */
 
@@ -28,6 +29,7 @@ typedef struct {
   unsigned int count;
   unsigned char skip_value;
   unsigned char record_comments;
+  unsigned char namespaces;
 } EventLog;
 
 static EventLog xml_log, exi_log;
@@ -68,7 +70,7 @@ static unsigned char log_attribute_key(char* key) {
   current_log->skip_value = (strncmp(key, "xmlns", 5) == 0 ||
                              strcmp(key, "xsi:schemaLocation") == 0);
   if (!current_log->skip_value) {
-    log_event('K', local_part(key));
+    log_event('K', current_log->namespaces ? local_part(key) : key);
   }
   return SXMLExplorerContinue;
 }
@@ -106,13 +108,16 @@ static unsigned char* read_file(const char* filename, unsigned int* size) {
   return buffer;
 }
 
+static unsigned char use_namespaces = 1;
+
 static SXMLExplorer* make_logging_explorer(EventLog* log, unsigned char record_comments) {
   SXMLExplorer* explorer = sxml_make_explorer();
   memset(log, 0, sizeof(EventLog));
   log->record_comments = record_comments;
+  log->namespaces = use_namespaces;
   current_log = log;
   sxml_enable_entity_processing(explorer, 1);
-  sxml_enable_namespace_processing(explorer, 1);
+  sxml_enable_namespace_processing(explorer, use_namespaces);
   sxml_register_func(explorer, log_tag, log_content, log_attribute_key, log_attribute_value);
   sxml_register_comment_func(explorer, log_comment);
   return explorer;
@@ -237,6 +242,29 @@ void test_exi_features_byte_aligned(void) {
                         SXML_EXI_PRESERVE_DTD | SXML_EXI_PRESERVE_PREFIXES);
 }
 
+// With prefixes preserved, qualified names match the XML without namespace processing
+void test_exi_qualified_names(void) {
+  unsigned int i;
+  unsigned char found_root = 0, found_lang = 0, found_foreign = 0;
+
+  use_namespaces = 0;
+  check_exi_matches_xml("test-features", "test-data/test-features-fidelity.exi",
+                        SXML_EXI_PRESERVE_COMMENTS | SXML_EXI_PRESERVE_PIS |
+                        SXML_EXI_PRESERVE_DTD | SXML_EXI_PRESERVE_PREFIXES);
+  check_exi_matches_xml("test-features", "test-data/test-features-fidelity-bytealigned.exi",
+                        SXML_EXI_BYTE_ALIGNED | SXML_EXI_PRESERVE_COMMENTS | SXML_EXI_PRESERVE_PIS |
+                        SXML_EXI_PRESERVE_DTD | SXML_EXI_PRESERVE_PREFIXES);
+  use_namespaces = 1;
+
+  for (i = 0; i < exi_log.count; i++) {
+    found_root |= strcmp(exi_log.events[i], "T:inv:inventory") == 0;
+    found_lang |= strcmp(exi_log.events[i], "K:xml:lang") == 0;
+    found_foreign |= strcmp(exi_log.events[i], "K:x:at") == 0;
+  }
+  CU_ASSERT(found_root && found_lang && found_foreign);
+  CU_ASSERT_STRING_EQUAL(exi_log.events[exi_log.count - 2], "T:/inv:inventory");
+}
+
 void test_exi_xsi_type(void) {
   static const char* expected[] = {
     "T:values", "T:value", "K:type", "V:Celsius", "C:21.5", "T:/value",
@@ -306,6 +334,7 @@ void test_exi_truncated(void) {
 
 static unsigned int stop_count = 0;
 static unsigned char stop_on_third_tag(char* name) {
+  (void)name;
   return (++stop_count == 3) ? SXMLExplorerStop : SXMLExplorerContinue;
 }
 
@@ -355,6 +384,7 @@ void add_exi_tests(CU_pSuite* suite) {
   CU_add_test(*suite, "EXI features (default options)", test_exi_features);
   CU_add_test(*suite, "EXI features (comments, PIs, DTD, prefixes)", test_exi_features_fidelity);
   CU_add_test(*suite, "EXI features (byte-aligned)", test_exi_features_byte_aligned);
+  CU_add_test(*suite, "EXI qualified names with prefixes", test_exi_qualified_names);
   CU_add_test(*suite, "EXI xsi:type", test_exi_xsi_type);
   CU_add_test(*suite, "EXI option mismatch detected", test_exi_option_mismatch);
   CU_add_test(*suite, "EXI invalid headers", test_exi_invalid_headers);

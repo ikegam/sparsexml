@@ -84,6 +84,7 @@ void test_chunked_attributes(void) {
 
 static unsigned int comment_counter = 0;
 static unsigned char chunked_comment_cb(char* c) {
+    (void)c;
     comment_counter++;
     return SXMLExplorerContinue;
 }
@@ -102,6 +103,7 @@ void test_chunked_comments(void) {
 
 static unsigned int sitemap_tag_count = 0;
 static unsigned char sitemap_on_tag(char* name) {
+    (void)name;
     sitemap_tag_count++;
     return SXMLExplorerContinue;
 }

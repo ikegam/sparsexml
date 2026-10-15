@@ -1,5 +1,6 @@
 CC ?= gcc
-CFLAGS ?= -Wall -g -O0 -I.
+CFLAGS ?= -Wall -Wextra -g -O0
+override CPPFLAGS += -I.
 LDFLAGS ?= -Wl,-z,noexecstack
 
 SRC = sparsexml.c
@@ -10,6 +11,7 @@ TEST_OBJ = $(TEST_SRC:.c=.o)
 
 EXAMPLES_SRC = examples/simple.c
 EXAMPLES_OBJ = $(EXAMPLES_SRC:.c=.o)
+
 BENCH_SRC = bench/bench.c \
             bench/bench_large_mem.c \
             bench/bench_deep_nesting.c \
@@ -24,6 +26,10 @@ BENCH_SRC = bench/bench.c \
             bench/main.c
 BENCH_OBJ = $(BENCH_SRC:.c=.o)
 
+# Each benchmark also has a main() of its own unless built as a library
+BENCH_LIBRARY_OBJ = $(filter-out bench/tinyxml_stub.o bench/main.o,$(BENCH_OBJ))
+$(BENCH_LIBRARY_OBJ): override CPPFLAGS += -DBENCH_LIBRARY
+
 all: test-sparsexml examples/simple bench/bench
 
 test: test-sparsexml
@@ -32,34 +38,14 @@ test: test-sparsexml
 test-sparsexml: $(OBJ) $(TEST_OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ -lcunit
 
-examples/simple: $(OBJ) examples/simple.o
+examples/simple: $(OBJ) $(EXAMPLES_OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 bench/bench: $(OBJ) $(BENCH_OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ -lexpat
-bench/bench.o: bench/bench.c
-	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
-bench/bench_large_mem.o: bench/bench_large_mem.c
-	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
-bench/bench_deep_nesting.o: bench/bench_deep_nesting.c
-	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
-bench/bench_many_attrs.o: bench/bench_many_attrs.c
-	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
-bench/bench_comments.o: bench/bench_comments.c
-	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
-bench/bench_entities.o: bench/bench_entities.c
-	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
-bench/bench_mixed_content.o: bench/bench_mixed_content.c
-	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
-bench/bench_stress_test.o: bench/bench_stress_test.c
-	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
-bench/bench_unicode_content.o: bench/bench_unicode_content.c
-	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
-bench/bench_exi.o: bench/bench_exi.c
-	$(CC) $(CFLAGS) -DBENCH_LIBRARY -c $< -o $@
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+%.o: %.c sparsexml.h sparsexml-priv.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 clean:
 	rm -f $(OBJ) $(TEST_OBJ) $(EXAMPLES_OBJ) $(BENCH_OBJ)
