@@ -9,15 +9,9 @@
 /*
  * EXI tests
  *
- * The .exi files in test-data were produced by EXIficient (the W3C EXI
- * reference implementation) from the .xml file with the same base name,
- * schema-less, e.g.:
- *
- *   EXIficientCMD -encode -noSchema -i test-features.xml -o test-features.exi
- *   ... -preserveComments -preservePIs -preserveDTDs -preservePrefixes
- *       -> test-features-fidelity.exi
- *   ... -bytePacked -> test-features-bytealigned.exi
- *   ... -includeOptions -includeCookie -> test-features-header-options.exi
+ * The .exi files in test-data are produced by EXIficient (the W3C EXI
+ * reference implementation) from the .xml files, schema-less, with the
+ * options listed in test-data/Makefile ("make -C test-data").
  *
  * Decoding an .exi file must produce the same events as parsing the
  * original XML. Namespace declarations and whitespace-only text are not

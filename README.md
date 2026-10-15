@@ -84,6 +84,12 @@ make
 ```
 Tests need CUnit, the benchmark needs libexpat.
 
+The EXI test data is generated from the XML files with EXIficient (needs java and curl):
+```bash
+make -C test-data         # encode .exi files whose .xml changed
+make -C test-data check   # verify the committed .exi files are reproducible
+```
+
 ## Memory Requirements
 - **RAM (XML)**: `sxml_explorer_size()` bytes (~1.2KB), no heap use while parsing
 - **RAM (EXI)**: a workspace for string tables and learned grammars, 32KB by default
