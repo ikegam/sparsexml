@@ -31,7 +31,7 @@ static void bench_sparsexml_exi(unsigned char* data, unsigned int size, int iter
     size_t total = 0;
     size_t maximum = 0;
     for(int i=0;i<iterations;i++){
-        SXMLExplorer* ex = sxml_make_explorer();
+        SXMLExplorer* ex = sxml_make_exi_explorer();
         sxml_register_func(ex, dummy_tag_cb, dummy_content_cb, dummy_attr_key_cb, dummy_attr_val_cb);
         size_t used = malloc_usable_size(ex);
         if(used > maximum) maximum = used;

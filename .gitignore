@@ -4,3 +4,4 @@ bench/bench
 examples/simple
 exificient/
 *.jar
+.exi-check/

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE inventory [
+<!ELEMENT inventory ANY>
+]>
+<?app-config mode="test"?>
+<!-- Feature coverage for the EXI decoder -->
+<inv:inventory xmlns:inv="urn:example:inventory" xmlns="urn:example:default" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <item id="1" kind="tool" xml:lang="ja">日本語のテキスト &amp; émoji 😀</item>
+  <item id="2" kind="tool">repeat</item>
+  <item id="3" kind="part">repeat</item>
+  <item kind="part" id="4"/>
+  <empty/>
+  <empty></empty>
+  <flag xsi:nil="false">set</flag>
+  <inv:nested><a><b><c><d><e>deep</e></d></c></b></a></inv:nested>
+  <mixed>before<i>inner</i>after<!-- inner comment -->end</mixed>
+  <attrs blank="" same="repeat" other="日本"/>
+  <x:foreign xmlns:x="urn:example:x" x:at="value">foreign</x:foreign>
+</inv:inventory>
+<!-- trailing comment -->

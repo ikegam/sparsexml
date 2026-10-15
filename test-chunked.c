@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include "sparsexml.h"
+#include "test-log.h"
 
 static unsigned char feed_chunks(SXMLExplorer* ex, const char* xml, size_t chunk_size) {
     size_t len = strlen(xml);
@@ -84,6 +85,7 @@ void test_chunked_attributes(void) {
 
 static unsigned int comment_counter = 0;
 static unsigned char chunked_comment_cb(char* c) {
+    (void)c;
     comment_counter++;
     return SXMLExplorerContinue;
 }
@@ -102,6 +104,7 @@ void test_chunked_comments(void) {
 
 static unsigned int sitemap_tag_count = 0;
 static unsigned char sitemap_on_tag(char* name) {
+    (void)name;
     sitemap_tag_count++;
     return SXMLExplorerContinue;
 }
@@ -133,10 +136,40 @@ void test_chunked_sitemap(void) {
     free(xml);
 }
 
+
+// Splitting the input at any position must not change the events
+static TestLog whole_log, chunk_log;
+
+static void parse_in_chunks(const char* xml, size_t chunk_size, TestLog* log) {
+    SXMLExplorer* ex = sxml_make_explorer();
+    sxml_enable_entity_processing(ex, 1);
+    sxml_enable_namespace_processing(ex, 1);
+    test_log_attach(ex, log, TEST_LOG_COMMENTS);
+    CU_ASSERT_EQUAL(feed_chunks(ex, xml, chunk_size), SXMLExplorerComplete);
+    sxml_destroy_explorer(ex);
+}
+
+void test_chunk_boundaries_do_not_matter(void) {
+    size_t chunk_size;
+    char* xml = read_file_to_string("test-data/test-features.xml");
+    CU_ASSERT_PTR_NOT_NULL_FATAL(xml);
+
+    parse_in_chunks(xml, strlen(xml), &whole_log);
+    CU_ASSERT(test_log_find(&whole_log, "M[ Feature coverage for the EXI decoder ]") >= 0);
+    CU_ASSERT(strstr(test_log_string(&whole_log), "T[empty]T[/empty]") != NULL);
+
+    for (chunk_size = 1; chunk_size <= 16; chunk_size++) {
+        parse_in_chunks(xml, chunk_size, &chunk_log);
+        CU_ASSERT_STRING_EQUAL(test_log_string(&chunk_log), test_log_string(&whole_log));
+    }
+    free(xml);
+}
+
 void add_chunked_tests(CU_pSuite* suite) {
     CU_add_test(*suite, "Chunked simple XML", test_chunked_simple_xml);
     CU_add_test(*suite, "Chunked attributes", test_chunked_attributes);
     CU_add_test(*suite, "Chunked comments", test_chunked_comments);
     CU_add_test(*suite, "Chunked sitemap", test_chunked_sitemap);
+    CU_add_test(*suite, "Chunk boundaries do not matter", test_chunk_boundaries_do_not_matter);
 }
 

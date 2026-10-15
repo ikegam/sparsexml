@@ -6,10 +6,10 @@
 #include "sparsexml.h"
 #include "tinyxml_stub.h"
 
-static unsigned char tag_cb(char* t){ return SXMLExplorerContinue; }
-static unsigned char content_cb(char* c){ return SXMLExplorerContinue; }
-static unsigned char key_cb(char* k){ return SXMLExplorerContinue; }
-static unsigned char val_cb(char* v){ return SXMLExplorerContinue; }
+static unsigned char tag_cb(char* t){ (void)t; return SXMLExplorerContinue; }
+static unsigned char content_cb(char* c){ (void)c; return SXMLExplorerContinue; }
+static unsigned char key_cb(char* k){ (void)k; return SXMLExplorerContinue; }
+static unsigned char val_cb(char* v){ (void)v; return SXMLExplorerContinue; }
 
 static void build_xml(char** out, int repeat){
     const char frag[] = "<child attr=\"v\">text</child>";
@@ -38,9 +38,9 @@ static size_t mem_usage_sparsexml(char* xml, double* t){
     return used;
 }
 
-static void start(void *ud,const char *name,const char **atts){ (void)ud; }
-static void end(void *ud,const char *name){ (void)ud; }
-static void ch(void *ud,const char *s,int len){ (void)ud; }
+static void start(void *ud,const char *name,const char **atts){ (void)name; (void)atts; (void)ud; }
+static void end(void *ud,const char *name){ (void)name; (void)ud; }
+static void ch(void *ud,const char *s,int len){ (void)s; (void)len; (void)ud; }
 
 static size_t mem_usage_expat(char* xml, double* t){
     struct mallinfo2 mi_before = mallinfo2();
