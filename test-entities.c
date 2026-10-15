@@ -24,7 +24,6 @@ static unsigned char found_amp = 0, found_copy = 0, found_code = 0, found_unicod
 // Static callback functions for entity tests
 static unsigned char test_standard_xml_entities_on_content(char *content) {
   test_standard_content_count++;
-  printf("DEBUG Standard entities: Content %d: '%s'\n", test_standard_content_count, content);
   if (test_standard_content_count == 1) {
     CU_ASSERT(strcmp(content, "<tag> content & \"quoted\" 'text'") == 0);
   }
@@ -224,21 +223,54 @@ void test_invalid_entities_handling(void) {
   sxml_destroy_explorer(explorer);
 }
 
-void test_numeric_entity_out_of_range(void) {
+static char numeric_utf8_content[64];
+static unsigned char test_numeric_utf8_on_content(char *content) {
+  strncpy(numeric_utf8_content, content, sizeof(numeric_utf8_content) - 1);
+  return SXMLExplorerContinue;
+}
+
+void test_numeric_entity_utf8(void) {
   SXMLExplorer* explorer;
-  char xml[] = "<?xml version=\"1.0\"?><test>&#255;</test>";  // Beyond ASCII range
-  
+  char xml[] = "<?xml version=\"1.0\"?><test>&#255;&#x3042;&#x1F600;</test>";  // ÿ あ 😀
+
+  memset(numeric_utf8_content, 0, sizeof(numeric_utf8_content));
   explorer = sxml_make_explorer();
   sxml_enable_entity_processing(explorer, 1);
   sxml_enable_numeric_entities(explorer, 1);
-  sxml_register_func(explorer, NULL, NULL, NULL, NULL);
-  
+  sxml_register_func(explorer, NULL, test_numeric_utf8_on_content, NULL, NULL);
+
   unsigned char result = sxml_run_explorer(explorer, xml);
-  
-  // Should return error for out-of-range numeric entity
-  CU_ASSERT(result == SXMLExplorerErrorInvalidEntity);
-  
+
+  // Non-ASCII character references are delivered as UTF-8
+  CU_ASSERT(result == SXMLExplorerComplete);
+  CU_ASSERT_STRING_EQUAL(numeric_utf8_content, "\xC3\xBF\xE3\x81\x82\xF0\x9F\x98\x80");
+
   sxml_destroy_explorer(explorer);
+}
+
+void test_numeric_entity_out_of_range(void) {
+  static char* invalid[] = {
+    "<test>&#x110000;</test>",  // Beyond Unicode
+    "<test>&#xD800;</test>",    // Surrogate
+    "<test>&#0;</test>",        // NUL
+    "<test>&#12a;</test>",      // Trailing garbage
+    "<test>&#x;</test>"         // No digits
+  };
+  unsigned int i;
+
+  for (i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++) {
+    char xml[64];
+    SXMLExplorer* explorer = sxml_make_explorer();
+    strcpy(xml, invalid[i]);
+    sxml_enable_entity_processing(explorer, 1);
+    sxml_enable_numeric_entities(explorer, 1);
+    sxml_register_func(explorer, NULL, NULL, NULL, NULL);
+
+    // Should return error for out-of-range numeric entity
+    CU_ASSERT_EQUAL(sxml_run_explorer(explorer, xml), SXMLExplorerErrorInvalidEntity);
+
+    sxml_destroy_explorer(explorer);
+  }
 }
 
 void test_entity_processing_disabled(void) {
@@ -297,6 +329,7 @@ void add_entity_tests(CU_pSuite* suite) {
   CU_add_test(*suite, "Mixed entity types", test_mixed_entity_types);
   CU_add_test(*suite, "Entities in attributes", test_entity_in_attributes);
   CU_add_test(*suite, "Invalid entities handling", test_invalid_entities_handling);
+  CU_add_test(*suite, "Numeric entity as UTF-8", test_numeric_entity_utf8);
   CU_add_test(*suite, "Numeric entity out of range", test_numeric_entity_out_of_range);
   CU_add_test(*suite, "Entity processing disabled", test_entity_processing_disabled);
   CU_add_test(*suite, "Complex real-world entities", test_complex_real_world_entities);

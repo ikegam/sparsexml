@@ -11,10 +11,20 @@ struct __SXMLExplorer {
   SXMLExplorerState prev_state; // Previous state for entity processing
   char entity_buffer[32];      // Temporary buffer for entity processing
   unsigned int entity_bp;      // Buffer pointer for entity processing
+  char tag_name[SXMLNameLength]; // Last reported tag name (for <empty/> elements)
+  char last[2];                // Last two characters seen in the current state
+  char quote;                  // Quote character of the current attribute value
+  unsigned char self_closing;  // '/' seen inside a start tag
+  unsigned int doctype_depth;  // Nesting of [ ] in DOCTYPE internal subset
   unsigned char enable_entity_processing; // Flag to enable/disable entity processing
   unsigned char enable_namespace_processing; // Flag to enable/disable namespace processing
   unsigned char enable_extended_entities; // Flag to enable/disable extended HTML entities
   unsigned char enable_numeric_entities; // Flag to enable/disable numeric character references
+  unsigned char heap_allocated; // Created by sxml_make_explorer()
+
+  unsigned char exi_options;   // SXML_EXI_* flags
+  void* exi_workspace;         // Caller-provided EXI workspace (optional)
+  unsigned int exi_workspace_size;
 
   unsigned char (*tag_func)(char *);
   unsigned char (*content_func)(char *);

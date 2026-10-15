@@ -1,6 +1,7 @@
 #include <CUnit/CUnit.h>
 #include <CUnit/Basic.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "sparsexml.h"
 
@@ -102,9 +103,9 @@ static unsigned char test_check_parsing_namespaces_on_tag(char *name) {
   } else if (namespace_tag_count == 2) {
     CU_ASSERT(strcmp(name, "child") == 0);
   } else if (namespace_tag_count == 3) {
-    CU_ASSERT(strcmp(name, "child") == 0);  // closing tag
+    CU_ASSERT(strcmp(name, "/child") == 0);  // closing tag keeps "/"
   } else if (namespace_tag_count == 4) {
-    CU_ASSERT(strcmp(name, "root") == 0);   // closing tag
+    CU_ASSERT(strcmp(name, "/root") == 0);   // closing tag keeps "/"
   }
   return SXMLExplorerContinue;
 }
@@ -247,7 +248,127 @@ void test_check_parsing_doctype(void) {
   sxml_destroy_explorer(explorer);
 }
 
+
+static unsigned int long_content_length = 0;
+static unsigned char test_long_content_on_content(char* content) {
+  long_content_length = strlen(content);
+  return SXMLExplorerContinue;
+}
+
+// Event recorder for syntax tests
+static char syntax_log[2048];
+static unsigned char syntax_record(char kind, char* text) {
+  size_t len = strlen(syntax_log);
+  snprintf(syntax_log + len, sizeof(syntax_log) - len, "%c[%s]", kind, text);
+  return SXMLExplorerContinue;
+}
+static unsigned char syntax_on_tag(char* s) { return syntax_record('T', s); }
+static unsigned char syntax_on_content(char* s) { return syntax_record('C', s); }
+static unsigned char syntax_on_key(char* s) { return syntax_record('K', s); }
+static unsigned char syntax_on_value(char* s) { return syntax_record('V', s); }
+static unsigned char syntax_on_comment(char* s) { return syntax_record('M', s); }
+
+static unsigned char parse_syntax(const char* text) {
+  char xml[512];
+  unsigned char ret;
+  SXMLExplorer* explorer = sxml_make_explorer();
+  strcpy(xml, text);
+  syntax_log[0] = '\0';
+  sxml_register_func(explorer, syntax_on_tag, syntax_on_content, syntax_on_key, syntax_on_value);
+  sxml_register_comment_func(explorer, syntax_on_comment);
+  ret = sxml_run_explorer(explorer, xml);
+  sxml_destroy_explorer(explorer);
+  return ret;
+}
+
+void test_self_closing_tags(void) {
+  CU_ASSERT_EQUAL(parse_syntax("<root><a/><b x=\"1\"/><c /></root>"), SXMLExplorerComplete);
+  CU_ASSERT_STRING_EQUAL(syntax_log, "T[root]T[a]T[/a]T[b]K[x]V[1]T[/b]T[c]T[/c]T[/root]");
+}
+
+void test_attribute_syntax(void) {
+  CU_ASSERT_EQUAL(parse_syntax("<r a='single' b = \"spaced\"\n\tc=\"\" d=\"it's\" e='say \"hi\"'>x</r>"), SXMLExplorerComplete);
+  CU_ASSERT_STRING_EQUAL(syntax_log,
+    "T[r]K[a]V[single]K[b]V[spaced]K[c]V[]K[d]V[it's]K[e]V[say \"hi\"]C[x]T[/r]");
+}
+
+void test_whitespace_in_tags(void) {
+  CU_ASSERT_EQUAL(parse_syntax("\n  <root\n  attr=\"v\"\n><child\t/></root\n>"), SXMLExplorerComplete);
+  CU_ASSERT_STRING_EQUAL(syntax_log, "C[\n  ]T[root]K[attr]V[v]T[child]T[/child]T[/root]");
+}
+
+void test_processing_instructions(void) {
+  CU_ASSERT_EQUAL(parse_syntax("<?xml version=\"1.0\"?><?style href=\"a>b\"?><r>a<?pi data?>b</r>"), SXMLExplorerComplete);
+  CU_ASSERT_STRING_EQUAL(syntax_log, "T[r]C[a]C[b]T[/r]");
+}
+
+void test_doctype_internal_subset(void) {
+  CU_ASSERT_EQUAL(parse_syntax("<!DOCTYPE r [<!ELEMENT r ANY><!ATTLIST r a CDATA \"x\">]><r>ok</r>"), SXMLExplorerComplete);
+  CU_ASSERT_STRING_EQUAL(syntax_log, "T[r]C[ok]T[/r]");
+}
+
+void test_content_around_markup(void) {
+  CU_ASSERT_EQUAL(parse_syntax("<r>a<!-- c -- d -->b<![CDATA[]]x]]>c</r>"), SXMLExplorerComplete);
+  CU_ASSERT_STRING_EQUAL(syntax_log, "T[r]C[a]M[ c -- d ]C[b]C[]]x]C[c]T[/r]");
+}
+
+void test_empty_input(void) {
+  SXMLExplorer* explorer = sxml_make_explorer();
+  char empty[] = "";
+  CU_ASSERT_EQUAL(sxml_run_explorer(explorer, empty), SXMLExplorerComplete);
+  CU_ASSERT_EQUAL(sxml_run_explorer(explorer, NULL), SXMLExplorerErrorMalformedXML);
+  sxml_destroy_explorer(explorer);
+}
+
+void test_static_explorer(void) {
+  static unsigned char memory[4096];
+  char xml[] = "<a>1</a>";
+  char tiny[4];
+  SXMLExplorer* explorer;
+
+  CU_ASSERT(sxml_explorer_size() <= sizeof(memory));
+  CU_ASSERT_PTR_NULL(sxml_init_explorer(tiny, sizeof(tiny)));
+  explorer = sxml_init_explorer(memory, sizeof(memory));
+  CU_ASSERT_PTR_NOT_NULL_FATAL(explorer);
+  syntax_log[0] = '\0';
+  sxml_register_func(explorer, syntax_on_tag, syntax_on_content, NULL, NULL);
+  CU_ASSERT_EQUAL(sxml_run_explorer(explorer, xml), SXMLExplorerComplete);
+  CU_ASSERT_STRING_EQUAL(syntax_log, "T[a]C[1]T[/a]");
+  sxml_destroy_explorer(explorer);  // no-op for caller-provided memory
+}
+
+void test_reset_explorer(void) {
+  SXMLExplorer* explorer = sxml_make_explorer();
+  char broken[] = "<a attr=\"unterminated";
+  char xml[] = "<b>2</b>";
+
+  syntax_log[0] = '\0';
+  sxml_register_func(explorer, syntax_on_tag, syntax_on_content, NULL, NULL);
+  sxml_run_explorer(explorer, broken);
+  sxml_reset_explorer(explorer);
+  syntax_log[0] = '\0';
+  CU_ASSERT_EQUAL(sxml_run_explorer(explorer, xml), SXMLExplorerComplete);
+  CU_ASSERT_STRING_EQUAL(syntax_log, "T[b]C[2]T[/b]");
+  sxml_destroy_explorer(explorer);
+}
+
+void test_long_content_truncated(void) {
+  static char xml[SXMLElementLength * 2 + 32];
+  unsigned int i;
+  strcpy(xml, "<r>");
+  for (i = 0; i < SXMLElementLength + 100; i++) strcat(xml, "x");
+  strcat(xml, "</r>");
+
+  SXMLExplorer* explorer = sxml_make_explorer();
+  sxml_register_func(explorer, NULL, test_long_content_on_content, NULL, NULL);
+  long_content_length = 0;
+  CU_ASSERT_EQUAL(sxml_run_explorer(explorer, xml), SXMLExplorerComplete);
+  CU_ASSERT_EQUAL(long_content_length, SXMLElementLength - 1);
+  sxml_destroy_explorer(explorer);
+}
+
 int main(void) {
+  unsigned int failures;
   CU_pSuite core_suite, internal_suite, advanced_suite, entity_suite, realworld_suite, chunked_suite, exi_suite;
   CU_initialize_registry();
 
@@ -256,6 +377,16 @@ int main(void) {
   CU_add_test(core_suite, "Parse simple XML", test_parse_simple_xml);
   CU_add_test(core_suite, "Check status in running explorer", test_check_event_on_content);
   CU_add_test(core_suite, "Check parsing attribute", test_check_parsing_attribute);
+  CU_add_test(core_suite, "Self-closing tags", test_self_closing_tags);
+  CU_add_test(core_suite, "Attribute syntax variants", test_attribute_syntax);
+  CU_add_test(core_suite, "Whitespace inside tags", test_whitespace_in_tags);
+  CU_add_test(core_suite, "Processing instructions", test_processing_instructions);
+  CU_add_test(core_suite, "DOCTYPE internal subset", test_doctype_internal_subset);
+  CU_add_test(core_suite, "Content around comments and CDATA", test_content_around_markup);
+  CU_add_test(core_suite, "Empty input", test_empty_input);
+  CU_add_test(core_suite, "Explorer in caller memory", test_static_explorer);
+  CU_add_test(core_suite, "Reset explorer", test_reset_explorer);
+  CU_add_test(core_suite, "Long content is truncated", test_long_content_truncated);
 
   // Internal Implementation Suite
   internal_suite = CU_add_suite("Internal Implementation", NULL, NULL);
@@ -287,7 +418,8 @@ int main(void) {
 
   CU_basic_set_mode(CU_BRM_VERBOSE);
   CU_basic_run_tests();
+  failures = CU_get_number_of_failures();
   CU_cleanup_registry();
 
-  return 0;
+  return failures == 0 ? 0 : 1;
 }

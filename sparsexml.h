@@ -9,8 +9,37 @@
 #define SXMLExplorerErrorInvalidEntity 0x04
 #define SXMLExplorerErrorBufferOverflow 0x05
 #define SXMLExplorerErrorMalformedXML 0x06
+#define SXMLExplorerErrorUnsupported 0x07
 
+// Maximum length of a single tag name, attribute, content chunk or comment
+// delivered to a callback. Longer data is truncated.
+#ifndef SXMLElementLength
 #define SXMLElementLength 1024
+#endif
+
+// Tag name remembered to report the closing event of <empty/> elements
+#ifndef SXMLNameLength
+#define SXMLNameLength 64
+#endif
+
+// EXI decoding needs string tables and learned grammars. They live in a
+// workspace that is either supplied with sxml_set_exi_workspace() or
+// allocated with malloc() for the duration of sxml_run_explorer_exi().
+#ifndef SXML_EXI_WORKSPACE_SIZE
+#define SXML_EXI_WORKSPACE_SIZE 32768
+#endif
+
+#ifndef SXML_EXI_MAX_DEPTH
+#define SXML_EXI_MAX_DEPTH 32
+#endif
+
+// EXI options that are not carried in the EXI header (out-of-band options)
+#define SXML_EXI_PRESERVE_COMMENTS 0x01
+#define SXML_EXI_PRESERVE_PIS 0x02
+#define SXML_EXI_PRESERVE_DTD 0x04
+#define SXML_EXI_PRESERVE_PREFIXES 0x08
+#define SXML_EXI_PRESERVE_LEXICAL_VALUES 0x10
+#define SXML_EXI_BYTE_ALIGNED 0x20
 
 typedef enum __SXMLExplorerState {
   INITIAL,
@@ -22,19 +51,31 @@ typedef enum __SXMLExplorerState {
   IN_COMMENT,
   IN_CDATA,
   IN_ENTITY,
-  IN_DOCTYPE
+  IN_DOCTYPE,
+  IN_ATTRIBUTE_EQUAL
 } SXMLExplorerState;
 
 typedef struct __SXMLExplorer SXMLExplorer;
 
 SXMLExplorer* sxml_make_explorer(void);
 void sxml_destroy_explorer(SXMLExplorer*);
+// Heap-free alternative to sxml_make_explorer(): initialise an explorer in
+// caller-provided memory of at least sxml_explorer_size() bytes.
+unsigned int sxml_explorer_size(void);
+SXMLExplorer* sxml_init_explorer(void* memory, unsigned int size);
+// Reset parsing state so the explorer can parse a new document.
+// Callbacks and options are kept.
+void sxml_reset_explorer(SXMLExplorer*);
+
 void sxml_register_func(SXMLExplorer*, void*, void*, void*, void*);
 void sxml_register_comment_func(SXMLExplorer*, void*);
 void sxml_enable_entity_processing(SXMLExplorer*, unsigned char);
 void sxml_enable_namespace_processing(SXMLExplorer*, unsigned char);
 void sxml_enable_extended_entities(SXMLExplorer*, unsigned char);
 void sxml_enable_numeric_entities(SXMLExplorer*, unsigned char);
+
+void sxml_set_exi_options(SXMLExplorer*, unsigned char);
+void sxml_set_exi_workspace(SXMLExplorer*, void*, unsigned int);
 
 unsigned char sxml_run_explorer(SXMLExplorer*, char*);
 unsigned char sxml_run_explorer_exi(SXMLExplorer*, unsigned char*, unsigned int);

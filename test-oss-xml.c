@@ -133,7 +133,7 @@ void test_real_world_atom_feed(void) {
   
   CU_ASSERT(result == SXMLExplorerComplete);
   CU_ASSERT_EQUAL(atom_tag_count, 26);  // Should parse many tags
-  CU_ASSERT_EQUAL(atom_content_count, 24);  // Should parse content elements
+  CU_ASSERT_EQUAL(atom_content_count, 25);  // Includes whitespace before the comment
   CU_ASSERT(atom_comment_count == 1);  // Should find the comment
   CU_ASSERT(atom_found_entities == 1);  // Should process entities
 
@@ -212,7 +212,7 @@ void test_complex_xml_with_cdata_and_entities(void) {
   // Should complete successfully with supported entities only
   CU_ASSERT(result == SXMLExplorerComplete);
   CU_ASSERT_EQUAL(complex_tag_count, 12);  // Should parse multiple tags (root, config, app:setting, description, data, footer)
-  CU_ASSERT_EQUAL(complex_content_count, 12);  // Should parse multiple content sections
+  CU_ASSERT_EQUAL(complex_content_count, 15);  // Includes whitespace around comment and CDATA
   CU_ASSERT(complex_comment_count == 1);  // Should find the comment
   CU_ASSERT(complex_found_cdata == 1);  // Should process CDATA section
   CU_ASSERT(complex_found_entities == 1);  // Should find content (entities processed)
@@ -339,7 +339,7 @@ void test_rss_feed(void) {
 
 // Test for Atom entry
 static const char* atom_entry_expected_tags[] = {
-    "entry","title","/title","link","/","id","/id",
+    "entry","title","/title","link","/link","id","/id",
     "updated","/updated","summary","/summary","/entry"
 };
 static const char* atom_entry_expected_attr_keys[] = {"xmlns","href"};

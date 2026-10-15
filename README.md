@@ -1,7 +1,7 @@
 # SparseXML
 **Minimal XML Parser for Embedded Systems**
 
-SparseXML is a lightweight XML parser designed for resource-constrained embedded systems. It provides SAX-style event-driven parsing with minimal memory footprint (~1KB) and zero external dependencies.
+SparseXML is a lightweight XML parser designed for resource-constrained embedded systems. It provides SAX-style event-driven parsing with minimal memory footprint (~1.2KB parser state) and zero external dependencies. It can also decode schema-less W3C EXI (binary XML) into the same callbacks.
 
 ## Integration
 Simply copy these 3 files to your project:
@@ -12,10 +12,12 @@ Simply copy these 3 files to your project:
 Then include `sparsexml.h` in your code. No build system or external dependencies required.
 
 ## Features
-- **Minimal Memory**: Fixed 1KB buffer, no dynamic allocation
-- **Event-Driven**: SAX-style callbacks for tags, attributes, content
-- **Entity Processing**: Standard XML, numeric, and HTML entities
-- **EXI Support**: Schema-less EXI binary format parsing  
+- **Minimal Memory**: Fixed buffers inside the parser, no allocation while parsing XML
+- **Heap-free Option**: Place the parser in your own memory with `sxml_init_explorer()`
+- **Streaming**: Feed XML in chunks split at any position
+- **Event-Driven**: SAX-style callbacks for tags, attributes, content, comments
+- **Entity Processing**: Standard XML, numeric (as UTF-8), and HTML entities
+- **EXI Support**: Schema-less EXI decoder (built-in grammars, string tables)
 - **Embedded-Ready**: Pure C, zero dependencies
 
 ## Quick Start
@@ -37,13 +39,42 @@ int main() {
     sxml_register_func(ex, on_tag, on_content, NULL, NULL);
     sxml_enable_entity_processing(ex, 1);
     
-    char xml[] = "<root>Hello &amp; World</root>";
-    sxml_run_explorer(ex, xml);
-    
+    char xml[] = "<root>Hello &amp; World<br/></root>";
+    sxml_run_explorer(ex, xml);   // Tag: root, Content: Hello & World,
+                                  // Tag: br, Tag: /br, Tag: /root
     sxml_destroy_explorer(ex);
     return 0;
 }
 ```
+
+## Events
+| Callback | Called with |
+|----------|-------------|
+| tag | Element name; end tags are reported as `/name`, also for `<empty/>` elements |
+| attribute key / value | Attribute name and value (single or double quoted) |
+| content | Text, including CDATA sections and whitespace between elements |
+| comment | Comment text |
+
+Return `SXMLExplorerContinue` to keep parsing or `SXMLExplorerStop` to stop.
+Data longer than `SXMLElementLength - 1` (1023) bytes is truncated.
+
+### Return values
+| Value | Meaning |
+|-------|---------|
+| `SXMLExplorerComplete` | Input consumed (for XML: ready for the next chunk) |
+| `SXMLExplorerInterrupted` | A callback returned `SXMLExplorerStop` |
+| `SXMLExplorerErrorInvalidEntity` | Unknown or invalid entity reference |
+| `SXMLExplorerErrorBufferOverflow` | EXI workspace too small or nesting deeper than `SXML_EXI_MAX_DEPTH` |
+| `SXMLExplorerErrorMalformedXML` | Invalid or truncated EXI stream, NULL input |
+| `SXMLExplorerErrorUnsupported` | EXI feature not supported (see below) |
+
+## Streaming
+The parser keeps all state in the explorer, so XML can arrive in pieces:
+```c
+sxml_run_explorer(ex, "<root><ite");
+sxml_run_explorer(ex, "m>text</item></root>");
+```
+Call `sxml_reset_explorer(ex)` before parsing another document with the same explorer.
 
 ## Building and Testing
 ```bash
@@ -51,33 +82,61 @@ make
 ./test-sparsexml
 ./examples/simple
 ```
+Tests need CUnit, the benchmark needs libexpat.
 
 ## Memory Requirements
-- **RAM**: ~1KB for parsing buffer + minimal stack usage
-- **Flash**: ~2KB for code (varies by compiler/architecture)
+- **RAM (XML)**: `sxml_explorer_size()` bytes (~1.2KB), no heap use while parsing
+- **RAM (EXI)**: a workspace for string tables and learned grammars, 32KB by default
+  (`SXML_EXI_WORKSPACE_SIZE`), allocated per call or supplied with `sxml_set_exi_workspace()`
+- **Flash**: ~3.7KB XML only (`-DSXML_NO_EXI`), ~11KB with EXI (x86-64, `-Os`)
+
+Without heap:
+```c
+static unsigned char parser_memory[1280];
+static unsigned char exi_workspace[8192];
+SXMLExplorer* ex = sxml_init_explorer(parser_memory, sizeof(parser_memory));
+sxml_set_exi_workspace(ex, exi_workspace, sizeof(exi_workspace));
+```
 
 ## Supported XML Features
-- ✅ Basic XML structure parsing
+- ✅ Basic XML structure parsing, self-closing tags
+- ✅ Single and double quoted attributes, whitespace inside tags
 - ✅ XML comments (`<!-- -->`)
 - ✅ CDATA sections (`<![CDATA[]]>`)
 - ✅ Standard XML entities (`&lt;`, `&gt;`, `&amp;`, `&quot;`, `&apos;`)
-- ✅ Numeric character references (`&#65;`, `&#x41;`)
+- ✅ Numeric character references (`&#65;`, `&#x41;`, non-ASCII as UTF-8)
 - ✅ Extended HTML entities (`&copy;`, `&reg;`, `&trade;`, `&nbsp;`, etc.)
-- ✅ XML namespaces (`ns:tag` format)
-- ✅ Basic DOCTYPE parsing
+- ✅ XML namespaces (`ns:tag` reported as `tag` when enabled)
+- ✅ DOCTYPE (skipped, including internal subsets) and processing instructions (skipped)
 - ✅ Buffer overflow protection
 - ✅ Configurable entity processing
 
 ## EXI Support
-Parse W3C EXI binary files in schema-less mode:
+Decode W3C EXI 1.0 streams that were encoded without a schema (e.g. `exificient -encode -noSchema`):
 ```c
-// Parse EXI binary data
 unsigned char result = sxml_run_explorer_exi(explorer, exi_data, exi_size);
 ```
+EXI events go to the same callbacks as XML. Element and attribute names are reported as local names,
+`xsi:type` values as the local name of the type. The whole stream must be in memory; a truncated
+stream returns `SXMLExplorerErrorMalformedXML`.
 
-- Compatible with exificient-generated EXI files
-- Dynamic string table management
-- Generic content classification
+EXI options are not stored in the stream by default, so the decoder must be told the options the
+encoder used:
+```c
+sxml_set_exi_options(explorer, SXML_EXI_PRESERVE_COMMENTS | SXML_EXI_BYTE_ALIGNED);
+```
+| Flag | Encoder option |
+|------|----------------|
+| `SXML_EXI_PRESERVE_COMMENTS` | `-preserveComments` (comments go to the comment callback) |
+| `SXML_EXI_PRESERVE_PIS` | `-preservePIs` (decoded and skipped) |
+| `SXML_EXI_PRESERVE_DTD` | `-preserveDTDs` (decoded and skipped) |
+| `SXML_EXI_PRESERVE_PREFIXES` | `-preservePrefixes` |
+| `SXML_EXI_PRESERVE_LEXICAL_VALUES` | `-preserveLexicalValues` |
+| `SXML_EXI_BYTE_ALIGNED` | `-bytePacked` |
+
+Not supported (`SXMLExplorerErrorUnsupported` where detectable): options in the EXI header
+(`-includeOptions`), compression and pre-compression, schema-informed streams, self-contained
+elements, and bounded `valueMaxLength` / `valuePartitionCapacity`.
 
 ## Configuration Options
 ```c
@@ -86,6 +145,7 @@ sxml_enable_numeric_entities(explorer, 1);       // &#65; format
 sxml_enable_extended_entities(explorer, 1);      // &copy; format
 sxml_enable_namespace_processing(explorer, 1);   // ns:tag format
 ```
+Compile-time: `SXMLElementLength`, `SXMLNameLength`, `SXML_EXI_WORKSPACE_SIZE`, `SXML_EXI_MAX_DEPTH`, `SXML_NO_EXI`.
 
 ## Use Cases
 - Configuration file parsing on microcontrollers
