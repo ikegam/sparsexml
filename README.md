@@ -211,9 +211,9 @@ sxml_enable_namespace_processing(ex, 1);   // ns:tag -> tag
 make                # library, tests, example and benchmark
 ./test-sparsexml    # CUnit tests
 ./examples/simple
-./bench/bench       # comparison with expat
+./bench/bench       # comparison with expat and TinyXML-2
 ```
-Tests need CUnit, the benchmark needs libexpat.
+Tests need CUnit, the benchmark needs libexpat and TinyXML-2 (C++).
 
 The EXI test data is generated from the XML files with EXIficient (needs java and curl):
 ```bash
