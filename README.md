@@ -225,6 +225,7 @@ make -C test-data check   # verify the committed .exi files are reproducible
 | `examples/` | Usage example |
 | `bench/` | Benchmarks |
 | `paper.md` | Design and evaluation notes (Japanese) |
+| `FUTURE.md` | Proposals, e.g. schema checks in the development environment |
 
 ## License
 BSD 4-Clause License, see [LICENSE](LICENSE). Note the advertising clause (clause 3):
