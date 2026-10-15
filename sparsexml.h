@@ -73,14 +73,18 @@ SXMLExplorer* sxml_init_exi_explorer(void* memory, unsigned int size);
 // Callbacks and options are kept.
 void sxml_reset_explorer(SXMLExplorer*);
 
-void sxml_register_func(SXMLExplorer*, void*, void*, void*, void*);
-// Callbacks receive text that is stored in the explorer. Inside a callback,
-// sxml_callback_explorer() turns that text back into the explorer, so the
-// callback can reach its own state through the user data instead of globals.
+// Callbacks receive the explorer that reports the event and the text, which
+// is stored in the explorer and valid until the callback returns. They reach
+// their own state through the user data instead of globals, and return
+// SXMLExplorerContinue or SXMLExplorerStop.
+typedef unsigned char (*SXMLCallback)(SXMLExplorer* explorer, char* text);
+
+// Callbacks may be NULL
+void sxml_register_func(SXMLExplorer*, SXMLCallback tag, SXMLCallback content,
+                        SXMLCallback attribute_key, SXMLCallback attribute_value);
+void sxml_register_comment_func(SXMLExplorer*, SXMLCallback comment);
 void sxml_set_user_data(SXMLExplorer*, void*);
 void* sxml_get_user_data(SXMLExplorer*);
-SXMLExplorer* sxml_callback_explorer(char* callback_text);
-void sxml_register_comment_func(SXMLExplorer*, void*);
 void sxml_enable_entity_processing(SXMLExplorer*, unsigned char);
 void sxml_enable_namespace_processing(SXMLExplorer*, unsigned char);
 void sxml_enable_extended_entities(SXMLExplorer*, unsigned char);

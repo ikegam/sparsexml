@@ -31,7 +31,7 @@ static unsigned char feed_chunks(SXMLExplorer* ex, const char* xml, size_t chunk
 }
 
 static unsigned int simple_tag_counter = 0;
-static unsigned char chunked_simple_on_tag(char* name) {
+static unsigned char chunked_simple_on_tag(SXMLExplorer* explorer, char* name) {
     if (strcmp("tag", name) == 0 && simple_tag_counter == 0) {
         simple_tag_counter++;
     } else if (strcmp("/tag", name) == 0 && simple_tag_counter == 1) {
@@ -53,19 +53,19 @@ void test_chunked_simple_xml(void) {
 }
 
 static unsigned int attr_counter = 0;
-static unsigned char chunked_attr_on_attr_key(char* key) {
+static unsigned char chunked_attr_on_attr_key(SXMLExplorer* explorer, char* key) {
     if (strcmp(key, "hoge") == 0 && attr_counter == 1) attr_counter++;
     if (strcmp(key, "no") == 0 && attr_counter == 3) attr_counter++;
     if (strcmp(key, "goe") == 0 && attr_counter == 6) attr_counter++;
     return SXMLExplorerContinue;
 }
-static unsigned char chunked_attr_on_attr_val(char* val) {
+static unsigned char chunked_attr_on_attr_val(SXMLExplorer* explorer, char* val) {
     if (strcmp(val, "fuga") == 0 && attr_counter == 2) attr_counter++;
     if (strcmp(val, "</tag>") == 0 && attr_counter == 4) attr_counter++;
     if (strcmp(val, "ds") == 0 && attr_counter == 7) attr_counter++;
     return SXMLExplorerContinue;
 }
-static unsigned char chunked_attr_on_tag(char* name) {
+static unsigned char chunked_attr_on_tag(SXMLExplorer* explorer, char* name) {
     if (strcmp(name, "tag") == 0 && attr_counter == 0) attr_counter++;
     if (strcmp(name, "tag2") == 0 && attr_counter == 5) attr_counter++;
     if (strcmp(name, "/tag") == 0 && attr_counter == 8) attr_counter++;
@@ -84,7 +84,7 @@ void test_chunked_attributes(void) {
 }
 
 static unsigned int comment_counter = 0;
-static unsigned char chunked_comment_cb(char* c) {
+static unsigned char chunked_comment_cb(SXMLExplorer* explorer, char* c) {
     (void)c;
     comment_counter++;
     return SXMLExplorerContinue;
@@ -103,7 +103,7 @@ void test_chunked_comments(void) {
 }
 
 static unsigned int sitemap_tag_count = 0;
-static unsigned char sitemap_on_tag(char* name) {
+static unsigned char sitemap_on_tag(SXMLExplorer* explorer, char* name) {
     (void)name;
     sitemap_tag_count++;
     return SXMLExplorerContinue;

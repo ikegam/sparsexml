@@ -39,10 +39,10 @@ static const char unicode_xml[] =
     "  </special_chars>\n"
     "</multilang>";
 
-static unsigned char unicode_tag_cb(char* tag){ (void)tag; return SXMLExplorerContinue; }
-static unsigned char unicode_content_cb(char* content){ (void)content; return SXMLExplorerContinue; }
-static unsigned char unicode_attr_key_cb(char* key){ (void)key; return SXMLExplorerContinue; }
-static unsigned char unicode_attr_value_cb(char* val){ (void)val; return SXMLExplorerContinue; }
+static unsigned char unicode_tag_cb(SXMLExplorer* explorer, char* tag){ (void)tag; return SXMLExplorerContinue; }
+static unsigned char unicode_content_cb(SXMLExplorer* explorer, char* content){ (void)content; return SXMLExplorerContinue; }
+static unsigned char unicode_attr_key_cb(SXMLExplorer* explorer, char* key){ (void)key; return SXMLExplorerContinue; }
+static unsigned char unicode_attr_value_cb(SXMLExplorer* explorer, char* val){ (void)val; return SXMLExplorerContinue; }
 
 static void expat_start_unicode(void *userData, const char *name, const char **atts){
     (void)userData; (void)name; (void)atts;

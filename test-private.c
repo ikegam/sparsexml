@@ -5,7 +5,7 @@
 #include "sparsexml-priv.h"
 
 // Static callback function for test_parse_separated_xml
-static unsigned char test_parse_separated_xml_on_tag(char *name) {
+static unsigned char test_parse_separated_xml_on_tag(SXMLExplorer* explorer, char *name) {
   static int c = 0;
   if (strcmp("tag", name) == 0 && c == 0) {
     c++;

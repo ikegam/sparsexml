@@ -66,11 +66,15 @@ SparseXMLは`sample/simple`に示されるように、ユーザがコールバ�
 ```c
 SXMLExplorer* sxml_make_explorer(void);
 void sxml_destroy_explorer(SXMLExplorer* explorer);
+// コールバックは通知元のexplorerと文字列を受け取る
+typedef unsigned char (*SXMLCallback)(SXMLExplorer* explorer, char* text);
 void sxml_register_func(SXMLExplorer* explorer,
-                       void* tag_func,
-                       void* content_func,
-                       void* attribute_key_func,
-                       void* attribute_value_func);
+                       SXMLCallback tag_func,
+                       SXMLCallback content_func,
+                       SXMLCallback attribute_key_func,
+                       SXMLCallback attribute_value_func);
+void sxml_set_user_data(SXMLExplorer* explorer, void* user_data);
+void* sxml_get_user_data(SXMLExplorer* explorer);
 
 // EXIサポート用のAPI（EXI用のexplorerを作って使う）
 SXMLExplorer* sxml_make_exi_explorer(void);
@@ -188,7 +192,7 @@ SparseXMLの最大の利点は、メモリフットプリントの小ささと�
 EXI（Efficient XML Interchange）フォーマットへの対応により、SparseXMLは単なるテキストXMLパーサーの枠を超えた。EXIは約58%の圧縮率を実現し、ネットワーク帯域の制約がある組み込み環境において大きな優位性を提供する。途中で切れたストリームや不正なストリームはエラーとして検出され、誤ったイベントを報告しない。
 
 ### 6.2 実装の最適化
-XMLの状態機械は1文字単位で処理し、コメントやCDATAの終端判定に先読みを使わないため、入力をどの位置で分割しても同じイベント列が得られる。XMLとEXIのexplorerはどちらも共通部分（コールバック、オプション、通知用バッファ）を先頭に持つ構造体で、共通部分へのポインタとして同じ関数で扱える。解析状態はすべてexplorer内にあり、コールバックも`sxml_callback_explorer()`で自分のexplorerと利用者データにたどり着けるため、グローバル変数を必要としない。EXIデコーダはx86-64の`-Os`で約5KBのコードを追加するが、`SXML_NO_EXI`を定義すればXML専用の構成（約4.2KB）にできる。
+XMLの状態機械は1文字単位で処理し、コメントやCDATAの終端判定に先読みを使わないため、入力をどの位置で分割しても同じイベント列が得られる。XMLとEXIのexplorerはどちらも共通部分（コールバック、オプション、通知用バッファ）を先頭に持つ構造体で、共通部分へのポインタとして同じ関数で扱える。解析状態はすべてexplorer内にあり、コールバックは引数で通知元のexplorerを受け取って`sxml_get_user_data()`で利用者データにたどり着けるため、グローバル変数を必要としない。コールバックは`SXMLCallback`型で登録するため、シグネチャの誤りはコンパイル時に検出される。以前は通知文字列からexplorerを逆算する関数を用意していたが、explorerを引数で渡す方式に改めた。呼び出し側のコード増加は数バイトで、逆算用の関数が不要になった分と相殺され、Cortex-M0（`-Os`）ではXML専用で2,866→2,858バイト、EXI込みで7,191→7,195バイトとほぼ変わらない。EXIデコーダはx86-64の`-Os`で約5KBのコードを追加するが、`SXML_NO_EXI`を定義すればXML専用の構成（約4.2KB）にできる。
 
 ### 6.3 制限事項と今後の展望
 DTD検証や高度な名前空間URI処理など、複雑なXML仕様には対応していないため、利用範囲は限定される。EXIについては、ヘッダ内のオプション、圧縮・事前圧縮、スキーマ情報付きEXIには対応していない。しかし、IoTデバイスや組み込みシステムでは、このような機能よりもメモリ効率とコードサイズの最小化が優先されることが多い。今後、オプションとしてバッファサイズの可変化や、さらなるストリーミング性能の向上を図ることで、より幅広い応用が期待できる。

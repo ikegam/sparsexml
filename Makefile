@@ -49,6 +49,9 @@ bench/bench: $(OBJ) $(BENCH_OBJ)
 
 $(TEST_OBJ): test-log.h
 
+# Most callbacks do not need the explorer they receive
+$(TEST_OBJ) $(EXAMPLES_OBJ) $(BENCH_OBJ): override CFLAGS += -Wno-unused-parameter
+
 clean:
 	rm -f $(OBJ) $(TEST_OBJ) $(EXAMPLES_OBJ) $(BENCH_OBJ)
 	rm -f test-sparsexml examples/simple bench/bench

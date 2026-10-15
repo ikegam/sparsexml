@@ -13,7 +13,7 @@ void add_exi_tests(CU_pSuite*);
 void add_chunked_tests(CU_pSuite*);
 
 // Static callback functions for tests
-static unsigned char test_parse_simple_xml_on_tag(char *name) {
+static unsigned char test_parse_simple_xml_on_tag(SXMLExplorer* explorer, char *name) {
   static int c = 0;
   if (strcmp("tag", name) == 0 && c == 0) {
     c++;
@@ -28,7 +28,7 @@ static unsigned char test_parse_simple_xml_on_tag(char *name) {
 
 static unsigned int attr_test_c = 0;  // Global variable for attribute test
 
-static unsigned char test_check_parsing_attribute_on_attribute_key(char *name) {
+static unsigned char test_check_parsing_attribute_on_attribute_key(SXMLExplorer* explorer, char *name) {
   if (strcmp("hoge", name) == 0 && attr_test_c == 1) {
     attr_test_c++;
   }
@@ -41,7 +41,7 @@ static unsigned char test_check_parsing_attribute_on_attribute_key(char *name) {
   return SXMLExplorerContinue;
 }
 
-static unsigned char test_check_parsing_attribute_on_attribute_value(char *name) {
+static unsigned char test_check_parsing_attribute_on_attribute_value(SXMLExplorer* explorer, char *name) {
   if (strcmp("fuga", name) == 0 && attr_test_c == 2) {
     attr_test_c++;
   }
@@ -54,7 +54,7 @@ static unsigned char test_check_parsing_attribute_on_attribute_value(char *name)
   return SXMLExplorerContinue;
 }
 
-static unsigned char test_check_parsing_attribute_on_tag(char *name) {
+static unsigned char test_check_parsing_attribute_on_tag(SXMLExplorer* explorer, char *name) {
   if (strcmp("tag", name) == 0 && attr_test_c == 0) {
     attr_test_c++;
   }
@@ -68,7 +68,7 @@ static unsigned char test_check_parsing_attribute_on_tag(char *name) {
 }
 
 static unsigned int comment_count = 0;
-static unsigned char test_check_parsing_comments_on_comment(char *comment) {
+static unsigned char test_check_parsing_comments_on_comment(SXMLExplorer* explorer, char *comment) {
   comment_count++;
   if (comment_count == 1) {
     CU_ASSERT(strcmp(comment, " First comment ") == 0);
@@ -79,7 +79,7 @@ static unsigned char test_check_parsing_comments_on_comment(char *comment) {
 }
 
 static unsigned int cdata_content_count = 0;
-static unsigned char test_check_parsing_cdata_on_content(char *content) {
+static unsigned char test_check_parsing_cdata_on_content(SXMLExplorer* explorer, char *content) {
   cdata_content_count++;
   if (cdata_content_count == 1) {
     CU_ASSERT(strcmp(content, "<tag>content & special chars</tag>") == 0);
@@ -88,7 +88,7 @@ static unsigned char test_check_parsing_cdata_on_content(char *content) {
 }
 
 static unsigned int entity_content_count = 0;
-static unsigned char test_check_parsing_entities_on_content(char *content) {
+static unsigned char test_check_parsing_entities_on_content(SXMLExplorer* explorer, char *content) {
   entity_content_count++;
   if (entity_content_count == 1) {
     CU_ASSERT(strcmp(content, "simple content") == 0);
@@ -97,7 +97,7 @@ static unsigned char test_check_parsing_entities_on_content(char *content) {
 }
 
 static unsigned int namespace_tag_count = 0;
-static unsigned char test_check_parsing_namespaces_on_tag(char *name) {
+static unsigned char test_check_parsing_namespaces_on_tag(SXMLExplorer* explorer, char *name) {
   namespace_tag_count++;
   if (namespace_tag_count == 1) {
     CU_ASSERT(strcmp(name, "root") == 0);  // namespace processing strips prefix
@@ -112,7 +112,7 @@ static unsigned char test_check_parsing_namespaces_on_tag(char *name) {
 }
 
 static unsigned int doctype_tag_count = 0;
-static unsigned char test_check_parsing_doctype_on_tag(char *name) {
+static unsigned char test_check_parsing_doctype_on_tag(SXMLExplorer* explorer, char *name) {
   doctype_tag_count++;
   if (doctype_tag_count == 1) {
     CU_ASSERT(strcmp(name, "root") == 0);
@@ -135,7 +135,7 @@ void test_parse_simple_xml(void) {
 }
 
 // Static callback functions for test_check_event_on_content
-static unsigned char test_check_event_on_content_on_content(char *content) {
+static unsigned char test_check_event_on_content_on_content(SXMLExplorer* explorer, char *content) {
   static int c = 0;
   switch (content[0]) {
     case '1':
@@ -251,7 +251,7 @@ void test_check_parsing_doctype(void) {
 
 
 static unsigned int long_content_length = 0;
-static unsigned char test_long_content_on_content(char* content) {
+static unsigned char test_long_content_on_content(SXMLExplorer* explorer, char* content) {
   long_content_length = strlen(content);
   return SXMLExplorerContinue;
 }
@@ -355,8 +355,8 @@ void test_explorer_kinds(void) {
 }
 
 // Callbacks reach their explorer, and through it their own state
-static unsigned char user_data_on_tag(char* name) {
-  unsigned int* count = sxml_get_user_data(sxml_callback_explorer(name));
+static unsigned char user_data_on_tag(SXMLExplorer* explorer, char* name) {
+  unsigned int* count = sxml_get_user_data(explorer);
   (*count)++;
   return SXMLExplorerContinue;
 }

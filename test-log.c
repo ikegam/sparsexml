@@ -3,23 +3,19 @@
 
 #include "test-log.h"
 
-static TestLog* log_of(char* text) {
-  return sxml_get_user_data(sxml_callback_explorer(text));
-}
-
 static void log_add(TestLog* log, char kind, const char* text) {
   if (log->count < TEST_LOG_EVENTS) {
     snprintf(log->events[log->count++], TEST_LOG_LENGTH, "%c[%s]", kind, text);
   }
 }
 
-static unsigned char log_tag(char* name) {
-  log_add(log_of(name), 'T', name);
+static unsigned char log_tag(SXMLExplorer* explorer, char* name) {
+  log_add(sxml_get_user_data(explorer), 'T', name);
   return SXMLExplorerContinue;
 }
 
-static unsigned char log_content(char* content) {
-  TestLog* log = log_of(content);
+static unsigned char log_content(SXMLExplorer* explorer, char* content) {
+  TestLog* log = sxml_get_user_data(explorer);
 
   if (log->flags & TEST_LOG_CANONICAL) {
     const char* p = content + strspn(content, " \t\r\n");
@@ -39,8 +35,8 @@ static unsigned char log_content(char* content) {
   return SXMLExplorerContinue;
 }
 
-static unsigned char log_attribute_key(char* key) {
-  TestLog* log = log_of(key);
+static unsigned char log_attribute_key(SXMLExplorer* explorer, char* key) {
+  TestLog* log = sxml_get_user_data(explorer);
 
   log->skip_value = (log->flags & TEST_LOG_CANONICAL) &&
                     (strncmp(key, "xmlns", 5) == 0 || strcmp(key, "xsi:schemaLocation") == 0);
@@ -51,8 +47,8 @@ static unsigned char log_attribute_key(char* key) {
   return SXMLExplorerContinue;
 }
 
-static unsigned char log_attribute_value(char* value) {
-  TestLog* log = log_of(value);
+static unsigned char log_attribute_value(SXMLExplorer* explorer, char* value) {
+  TestLog* log = sxml_get_user_data(explorer);
 
   if (!log->skip_value) {
     log_add(log, 'V', value);
@@ -61,8 +57,8 @@ static unsigned char log_attribute_value(char* value) {
   return SXMLExplorerContinue;
 }
 
-static unsigned char log_comment(char* comment) {
-  TestLog* log = log_of(comment);
+static unsigned char log_comment(SXMLExplorer* explorer, char* comment) {
+  TestLog* log = sxml_get_user_data(explorer);
 
   if (log->flags & TEST_LOG_COMMENTS) {
     log_add(log, 'M', comment);

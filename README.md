@@ -24,8 +24,8 @@ has no global state and no dependencies. It also decodes schema-less
 
 ## Features
 - **Small**: ~1.2KB of parser state, ~4.2KB of code for XML only (x86-64, `-Os`)
-- **No heap, no globals**: place the parser in your own memory; callbacks reach their
-  state through the parser
+- **No heap, no globals**: place the parser in your own memory; callbacks receive the
+  parser and reach their state through it
 - **Streaming**: feed XML in chunks split at any position
 - **Event-driven**: callbacks for tags, attributes, text and comments
 - **Entities**: standard XML, numeric (delivered as UTF-8) and a few HTML entities
@@ -48,12 +48,12 @@ No build system is required. Define `SXML_NO_EXI` to leave out the EXI decoder.
 #include <stdio.h>
 #include "sparsexml.h"
 
-static unsigned char on_tag(char* name) {
+static unsigned char on_tag(SXMLExplorer* ex, char* name) {
     printf("Tag: %s\n", name);
     return SXMLExplorerContinue;
 }
 
-static unsigned char on_content(char* content) {
+static unsigned char on_content(SXMLExplorer* ex, char* content) {
     printf("Content: %s\n", content);
     return SXMLExplorerContinue;
 }
@@ -85,10 +85,11 @@ It is created for one input format:
 Both kinds share the callbacks and options (`sxml_register_func()`, `sxml_enable_*()`).
 Running an explorer with the other format returns `SXMLExplorerErrorUnsupported`.
 
-Callbacks can keep their state in the explorer instead of globals:
+Callbacks receive the explorer that reports the event, so they can keep their state in it
+instead of globals:
 ```c
-static unsigned char count_tags(char* name) {
-    unsigned int* count = sxml_get_user_data(sxml_callback_explorer(name));
+static unsigned char count_tags(SXMLExplorer* ex, char* name) {
+    unsigned int* count = sxml_get_user_data(ex);
     (*count)++;
     return SXMLExplorerContinue;
 }
@@ -97,7 +98,6 @@ unsigned int count = 0;
 sxml_set_user_data(ex, &count);
 sxml_register_func(ex, count_tags, NULL, NULL, NULL);
 ```
-`sxml_callback_explorer()` only works on the text a callback received.
 
 ## Events and return values
 | Callback | Called with |
@@ -107,7 +107,9 @@ sxml_register_func(ex, count_tags, NULL, NULL, NULL);
 | content | Text, including CDATA sections and whitespace between elements |
 | comment | Comment text |
 
-Callbacks return `SXMLExplorerContinue` to go on or `SXMLExplorerStop` to stop.
+All callbacks have the type `SXMLCallback`, `unsigned char (*)(SXMLExplorer* ex, char* text)`;
+any of them may be `NULL`. `text` lives in the explorer and is valid until the callback
+returns. Callbacks return `SXMLExplorerContinue` to go on or `SXMLExplorerStop` to stop.
 Data longer than `SXMLElementLength - 1` (1023) bytes is truncated.
 
 | Return value | Meaning |

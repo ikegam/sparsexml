@@ -22,7 +22,7 @@ static unsigned int test_complex_content_count = 0;
 static unsigned char found_amp = 0, found_copy = 0, found_code = 0, found_unicode = 0;
 
 // Static callback functions for entity tests
-static unsigned char test_standard_xml_entities_on_content(char *content) {
+static unsigned char test_standard_xml_entities_on_content(SXMLExplorer* explorer, char *content) {
   test_standard_content_count++;
   if (test_standard_content_count == 1) {
     CU_ASSERT(strcmp(content, "<tag> content & \"quoted\" 'text'") == 0);
@@ -30,7 +30,7 @@ static unsigned char test_standard_xml_entities_on_content(char *content) {
   return SXMLExplorerContinue;
 }
 
-static unsigned char test_numeric_decimal_on_content(char *content) {
+static unsigned char test_numeric_decimal_on_content(SXMLExplorer* explorer, char *content) {
   test_decimal_content_count++;
   if (test_decimal_content_count == 1) {
     CU_ASSERT(strcmp(content, "ABC") == 0);
@@ -38,7 +38,7 @@ static unsigned char test_numeric_decimal_on_content(char *content) {
   return SXMLExplorerContinue;
 }
 
-static unsigned char test_numeric_hex_on_content(char *content) {
+static unsigned char test_numeric_hex_on_content(SXMLExplorer* explorer, char *content) {
   test_hex_content_count++;
   if (test_hex_content_count == 1) {
     CU_ASSERT(strcmp(content, "ABC") == 0);
@@ -46,7 +46,7 @@ static unsigned char test_numeric_hex_on_content(char *content) {
   return SXMLExplorerContinue;
 }
 
-static unsigned char test_extended_html_on_content(char *content) {
+static unsigned char test_extended_html_on_content(SXMLExplorer* explorer, char *content) {
   test_extended_content_count++;
   if (test_extended_content_count == 1) {
     CU_ASSERT(strcmp(content, "(c) (R) (TM)   E #") == 0);
@@ -54,7 +54,7 @@ static unsigned char test_extended_html_on_content(char *content) {
   return SXMLExplorerContinue;
 }
 
-static unsigned char test_mixed_entity_on_content(char *content) {
+static unsigned char test_mixed_entity_on_content(SXMLExplorer* explorer, char *content) {
   test_mixed_content_count++;
   if (test_mixed_content_count == 1) {
     CU_ASSERT(strcmp(content, "<TestA> (c)  ") == 0);
@@ -62,7 +62,7 @@ static unsigned char test_mixed_entity_on_content(char *content) {
   return SXMLExplorerContinue;
 }
 
-static unsigned char test_entity_in_attributes_on_attribute_value(char *value) {
+static unsigned char test_entity_in_attributes_on_attribute_value(SXMLExplorer* explorer, char *value) {
   test_attr_count++;
   if (test_attr_count == 1) {
     CU_ASSERT(strcmp(value, "<value>") == 0);
@@ -72,7 +72,7 @@ static unsigned char test_entity_in_attributes_on_attribute_value(char *value) {
   return SXMLExplorerContinue;
 }
 
-static unsigned char test_entity_processing_disabled_on_content(char *content) {
+static unsigned char test_entity_processing_disabled_on_content(SXMLExplorer* explorer, char *content) {
   test_disabled_content_count++;
   if (test_disabled_content_count == 1) {
     // Should contain raw entity references when processing is disabled
@@ -82,7 +82,7 @@ static unsigned char test_entity_processing_disabled_on_content(char *content) {
   return SXMLExplorerContinue;
 }
 
-static unsigned char test_complex_real_world_on_content(char *content) {
+static unsigned char test_complex_real_world_on_content(SXMLExplorer* explorer, char *content) {
   test_complex_content_count++;
   if (strstr(content, "API Reference & Documentation") != NULL) {
     found_amp = 1;
@@ -224,7 +224,7 @@ void test_invalid_entities_handling(void) {
 }
 
 static char numeric_utf8_content[64];
-static unsigned char test_numeric_utf8_on_content(char *content) {
+static unsigned char test_numeric_utf8_on_content(SXMLExplorer* explorer, char *content) {
   strncpy(numeric_utf8_content, content, sizeof(numeric_utf8_content) - 1);
   return SXMLExplorerContinue;
 }

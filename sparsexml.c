@@ -154,7 +154,7 @@ void sxml_reset_explorer(SXMLExplorer* explorer) {
 #endif
 }
 
-void sxml_register_func(SXMLExplorer* explorer, void* open, void* content, void* attribute_key, void* attribute_value) {
+void sxml_register_func(SXMLExplorer* explorer, SXMLCallback open, SXMLCallback content, SXMLCallback attribute_key, SXMLCallback attribute_value) {
   explorer->tag_func = open;
   explorer->content_func = content;
   explorer->attribute_value_func = attribute_value;
@@ -169,12 +169,7 @@ void* sxml_get_user_data(SXMLExplorer* explorer) {
   return explorer->user_data;
 }
 
-SXMLExplorer* sxml_callback_explorer(char* callback_text) {
-  // Every callback receives explorer->buffer (see priv_emit)
-  return (SXMLExplorer*)(callback_text - offsetof(SXMLExplorer, buffer));
-}
-
-void sxml_register_comment_func(SXMLExplorer* explorer, void* comment) {
+void sxml_register_comment_func(SXMLExplorer* explorer, SXMLCallback comment) {
   explorer->comment_func = comment;
 }
 
@@ -309,16 +304,16 @@ unsigned char priv_sxml_process_extended_entity(SXMLExplorer* explorer, char* en
 // EVENT DELIVERY (shared by the XML parser and the EXI decoder)
 // =============================================================================
 
-// Deliver text to a callback. Callbacks always receive explorer->buffer,
-// which sxml_callback_explorer() relies on.
-static unsigned char priv_emit(SXMLExplorer* explorer, unsigned char (*func)(char*), const char* text) {
+// Deliver text to a callback. Callbacks always receive explorer->buffer, so
+// they never see (or modify) the input or the EXI string tables.
+static unsigned char priv_emit(SXMLExplorer* explorer, SXMLCallback func, const char* text) {
   if (func == NULL) {
     return SXMLExplorerContinue;
   }
   if (text != explorer->buffer) {
     priv_set_buffer(explorer, "", text);
   }
-  return func(explorer->buffer);
+  return func(explorer, explorer->buffer);
 }
 
 // Deliver a start ("name") or end ("/name") tag. The namespace prefix is
@@ -1083,7 +1078,7 @@ static void exi_learn(SXMLExiExplorer* d, ExiGrammar* grammar, unsigned char typ
 }
 
 // Report "prefix:local" (or "local") to an attribute callback
-static unsigned char exi_emit_qname(SXMLExiExplorer* d, unsigned char (*func)(char*), const char* prefix, const char* local) {
+static unsigned char exi_emit_qname(SXMLExiExplorer* d, SXMLCallback func, const char* prefix, const char* local) {
   SXMLExplorer* explorer = &d->base;
 
   if (prefix != NULL && prefix[0] != '\0') {
