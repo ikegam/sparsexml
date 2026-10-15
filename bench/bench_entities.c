@@ -4,7 +4,7 @@
 #include <malloc.h>
 #include <time.h>
 #include "sparsexml.h"
-#include "tinyxml_stub.h"
+#include "tinyxml_bench.h"
 
 static unsigned char tag_cb(SXMLExplorer* explorer, char* t){ (void)t; return SXMLExplorerContinue; }
 static unsigned char content_cb(SXMLExplorer* explorer, char* c){ (void)c; return SXMLExplorerContinue; }

@@ -7,7 +7,7 @@
 #include <ctype.h>
 #include <malloc.h>
 #include "sparsexml.h"
-#include "tinyxml_stub.h"
+#include "tinyxml_bench.h"
 
 static char* generate_stress_xml(int depth, int width, int attr_count) {
     // Calculate buffer size needed

@@ -18,7 +18,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y \
           build-essential pkg-config \
-          libcunit1 libcunit1-dev libexpat1-dev
+          libcunit1 libcunit1-dev libexpat1-dev libtinyxml2-dev
 
     - uses: actions/checkout@v4
     - name: make

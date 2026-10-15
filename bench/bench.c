@@ -7,7 +7,7 @@
 #include <ctype.h>
 #include <malloc.h>
 #include "sparsexml.h"
-#include "tinyxml_stub.h"
+#include "tinyxml_bench.h"
 
 static const char xml[] = "<?xml version=\"1.0\"?><root attr=\"value\">text<child>child</child></root>";
 
@@ -112,6 +112,14 @@ static void run_expat_test(void){
     printf("[TEST] expat counters ok (tags=%u, contents=%u, attrs=%u)\n", expat_tag_count, expat_content_count, expat_attr_count);
 }
 
+static void run_tinyxml_test(void){
+    TinyXMLDoc *doc = tinyxml_load_string(xml);
+    assert(doc != NULL);
+    assert(tinyxml_element_count(doc) == 2);
+    printf("[TEST] tinyxml2 ok (elements=%u, heap=%zu bytes)\n", tinyxml_element_count(doc), tinyxml_mem_usage(doc));
+    tinyxml_free(doc);
+}
+
 void bench_sparsexml(int iterations, size_t *avg_mem, size_t *max_mem){
     size_t total = 0;
     size_t maximum = 0;
@@ -175,6 +183,7 @@ int main(int argc, char **argv)
 
     run_test();
     run_expat_test();
+    run_tinyxml_test();
 
     /* Print table header once with aligned columns */
     printf("%-12s | %-8s | %-18s | %-14s | %-14s | %-16s | %-16s | %-16s\n",
