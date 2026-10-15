@@ -264,8 +264,8 @@ void test_exi_truncated(void) {
   }
 }
 
-static unsigned char stop_on_third_tag(char* name) {
-  unsigned int* count = sxml_get_user_data(sxml_callback_explorer(name));
+static unsigned char stop_on_third_tag(SXMLExplorer* explorer, char* name) {
+  unsigned int* count = sxml_get_user_data(explorer);
   return (++*count == 3) ? SXMLExplorerStop : SXMLExplorerContinue;
 }
 

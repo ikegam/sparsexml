@@ -6,11 +6,11 @@
 #include "sparsexml.h"
 #include "tinyxml_stub.h"
 
-static unsigned char tag_cb(char* t){ (void)t; return SXMLExplorerContinue; }
-static unsigned char content_cb(char* c){ (void)c; return SXMLExplorerContinue; }
-static unsigned char key_cb(char* k){ (void)k; return SXMLExplorerContinue; }
-static unsigned char val_cb(char* v){ (void)v; return SXMLExplorerContinue; }
-static unsigned char comment_cb(char* c){ (void)c; return SXMLExplorerContinue; }
+static unsigned char tag_cb(SXMLExplorer* explorer, char* t){ (void)t; return SXMLExplorerContinue; }
+static unsigned char content_cb(SXMLExplorer* explorer, char* c){ (void)c; return SXMLExplorerContinue; }
+static unsigned char key_cb(SXMLExplorer* explorer, char* k){ (void)k; return SXMLExplorerContinue; }
+static unsigned char val_cb(SXMLExplorer* explorer, char* v){ (void)v; return SXMLExplorerContinue; }
+static unsigned char comment_cb(SXMLExplorer* explorer, char* c){ (void)c; return SXMLExplorerContinue; }
 
 static void build_xml(char** out, int count){
     const char frag[] = "<!-- comment -->";

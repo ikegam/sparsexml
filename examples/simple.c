@@ -1,27 +1,27 @@
 #include <stdio.h>
 #include "sparsexml.h"
 
-static unsigned char on_tag(char *name) {
+static unsigned char on_tag(SXMLExplorer* explorer, char *name) {
     printf("TAG: %s\n", name);
     return SXMLExplorerContinue;
 }
 
-static unsigned char on_content(char *content) {
+static unsigned char on_content(SXMLExplorer* explorer, char *content) {
     printf("CONTENT: %s\n", content);
     return SXMLExplorerContinue;
 }
 
-static unsigned char on_attribute_key(char *key) {
+static unsigned char on_attribute_key(SXMLExplorer* explorer, char *key) {
     printf("ATTR KEY: %s\n", key);
     return SXMLExplorerContinue;
 }
 
-static unsigned char on_attribute_value(char *value) {
+static unsigned char on_attribute_value(SXMLExplorer* explorer, char *value) {
     printf("ATTR VALUE: %s\n", value);
     return SXMLExplorerContinue;
 }
 
-static unsigned char on_comment(char *text) {
+static unsigned char on_comment(SXMLExplorer* explorer, char *text) {
     printf("COMMENT: %s\n", text);
     return SXMLExplorerContinue;
 }

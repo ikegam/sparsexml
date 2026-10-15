@@ -30,10 +30,10 @@ static void reset_counters(void){
 }
 
 
-static unsigned char tag_cb(char* tag){ (void)tag; return SXMLExplorerContinue;}
-static unsigned char content_cb(char* content){ (void)content; return SXMLExplorerContinue;}
-static unsigned char attr_key_cb(char* key){ (void)key; return SXMLExplorerContinue;}
-static unsigned char attr_value_cb(char* val){ (void)val; return SXMLExplorerContinue;}
+static unsigned char tag_cb(SXMLExplorer* explorer, char* tag){ (void)tag; return SXMLExplorerContinue;}
+static unsigned char content_cb(SXMLExplorer* explorer, char* content){ (void)content; return SXMLExplorerContinue;}
+static unsigned char attr_key_cb(SXMLExplorer* explorer, char* key){ (void)key; return SXMLExplorerContinue;}
+static unsigned char attr_value_cb(SXMLExplorer* explorer, char* val){ (void)val; return SXMLExplorerContinue;}
 
 static void expat_start(void *userData, const char *name, const char **atts){
     (void)name;
@@ -62,25 +62,25 @@ static void expat_char(void *userData, const char *s, int len){
     }
 }
 
-static unsigned char count_tag(char *name){
+static unsigned char count_tag(SXMLExplorer* explorer, char *name){
     (void)name;
     tag_count++;
     return SXMLExplorerContinue;
 }
 
-static unsigned char count_content(char *c){
+static unsigned char count_content(SXMLExplorer* explorer, char *c){
     if(strlen(c) > 0)
         content_count++;
     return SXMLExplorerContinue;
 }
 
-static unsigned char count_attr_key(char *k){
+static unsigned char count_attr_key(SXMLExplorer* explorer, char *k){
     (void)k;
     attr_count++;
     return SXMLExplorerContinue;
 }
 
-static unsigned char count_attr_val(char *v){
+static unsigned char count_attr_val(SXMLExplorer* explorer, char *v){
     (void)v;
     return SXMLExplorerContinue;
 }

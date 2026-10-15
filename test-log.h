@@ -5,8 +5,8 @@
 
 /*
  * Event recorder for tests. The log is attached to an explorer as user data,
- * and the callbacks find it again with sxml_callback_explorer(), so several
- * logs can be recorded at the same time without globals.
+ * and the callbacks find it again through the explorer, so several logs can
+ * be recorded at the same time without globals.
  *
  * Events are stored as "T[name]", "K[key]", "V[value]", "C[text]" and
  * "M[comment]".

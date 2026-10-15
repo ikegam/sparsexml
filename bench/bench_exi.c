@@ -5,10 +5,10 @@
 #include <malloc.h>
 #include "sparsexml.h"
 
-static unsigned char dummy_tag_cb(char* t){ (void)t; return SXMLExplorerContinue; }
-static unsigned char dummy_content_cb(char* c){ (void)c; return SXMLExplorerContinue; }
-static unsigned char dummy_attr_key_cb(char* k){ (void)k; return SXMLExplorerContinue; }
-static unsigned char dummy_attr_val_cb(char* v){ (void)v; return SXMLExplorerContinue; }
+static unsigned char dummy_tag_cb(SXMLExplorer* explorer, char* t){ (void)t; return SXMLExplorerContinue; }
+static unsigned char dummy_content_cb(SXMLExplorer* explorer, char* c){ (void)c; return SXMLExplorerContinue; }
+static unsigned char dummy_attr_key_cb(SXMLExplorer* explorer, char* k){ (void)k; return SXMLExplorerContinue; }
+static unsigned char dummy_attr_val_cb(SXMLExplorer* explorer, char* v){ (void)v; return SXMLExplorerContinue; }
 
 static unsigned char* read_file_to_buffer(const char* filename, unsigned int* size){
     FILE* f = fopen(filename, "rb");

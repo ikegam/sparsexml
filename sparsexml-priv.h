@@ -19,11 +19,11 @@ struct __SXMLExplorer {
   unsigned char enable_extended_entities; // Flag to enable/disable extended HTML entities
   unsigned char enable_numeric_entities; // Flag to enable/disable numeric character references
 
-  unsigned char (*tag_func)(char *);
-  unsigned char (*content_func)(char *);
-  unsigned char (*attribute_value_func)(char *);
-  unsigned char (*attribute_key_func)(char *);
-  unsigned char (*comment_func)(char *);
+  SXMLCallback tag_func;
+  SXMLCallback content_func;
+  SXMLCallback attribute_value_func;
+  SXMLCallback attribute_key_func;
+  SXMLCallback comment_func;
   void* user_data;
 };
 

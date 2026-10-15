@@ -20,7 +20,7 @@ static unsigned int sitemap_tag_count = 0;
 static unsigned int sitemap_content_count = 0;
 static unsigned char sitemap_found_namespace = 0;
 
-static unsigned char sitemap_on_tag(char *name) {
+static unsigned char sitemap_on_tag(SXMLExplorer* explorer, char *name) {
   sitemap_tag_count++;
   if (strcmp(name, "urlset") == 0) {
     sitemap_found_namespace = 1;  // namespace processing should strip prefix
@@ -28,7 +28,7 @@ static unsigned char sitemap_on_tag(char *name) {
   return SXMLExplorerContinue;
 }
 
-static unsigned char sitemap_on_content(char *content) {
+static unsigned char sitemap_on_content(SXMLExplorer* explorer, char *content) {
   (void)content;
   sitemap_content_count++;
   return SXMLExplorerContinue;
@@ -84,13 +84,13 @@ static unsigned int atom_content_count = 0;
 static unsigned int atom_comment_count = 0;
 static unsigned char atom_found_entities = 0;
 
-static unsigned char atom_on_tag(char *name) {
+static unsigned char atom_on_tag(SXMLExplorer* explorer, char *name) {
   (void)name;
   atom_tag_count++;
   return SXMLExplorerContinue;
 }
 
-static unsigned char atom_on_content(char *content) {
+static unsigned char atom_on_content(SXMLExplorer* explorer, char *content) {
   atom_content_count++;
   // Check if content exists (entities may not be fully processed yet)
   if (strlen(content) > 0) {
@@ -99,7 +99,7 @@ static unsigned char atom_on_content(char *content) {
   return SXMLExplorerContinue;
 }
 
-static unsigned char atom_on_comment(char *comment) {
+static unsigned char atom_on_comment(SXMLExplorer* explorer, char *comment) {
   atom_comment_count++;
   CU_ASSERT(strstr(comment, "This is a comment") != NULL);
   return SXMLExplorerContinue;
@@ -151,7 +151,7 @@ static unsigned char complex_found_cdata = 0;
 static unsigned char complex_found_entities = 0;
 static unsigned char complex_found_namespaces = 0;
 
-static unsigned char complex_on_tag(char *name) {
+static unsigned char complex_on_tag(SXMLExplorer* explorer, char *name) {
   complex_tag_count++;
   if (strcmp(name, "setting") == 0) {  // namespace prefix should be stripped
     complex_found_namespaces = 1;
@@ -159,7 +159,7 @@ static unsigned char complex_on_tag(char *name) {
   return SXMLExplorerContinue;
 }
 
-static unsigned char complex_on_content(char *content) {
+static unsigned char complex_on_content(SXMLExplorer* explorer, char *content) {
   complex_content_count++;
   if (strstr(content, "Raw data with <tags>") != NULL) {
     complex_found_cdata = 1;  // CDATA content preserved
@@ -170,7 +170,7 @@ static unsigned char complex_on_content(char *content) {
   return SXMLExplorerContinue;
 }
 
-static unsigned char complex_on_comment(char *comment) {
+static unsigned char complex_on_comment(SXMLExplorer* explorer, char *comment) {
   (void)comment;
   complex_comment_count++;
   return SXMLExplorerContinue;
@@ -227,13 +227,13 @@ void test_complex_xml_with_cdata_and_entities(void) {
 // Global variables for test_error_handling_with_malformed_xml
 static unsigned int error_tag_count = 0;
 
-static unsigned char error_on_tag(char *name) {
+static unsigned char error_on_tag(SXMLExplorer* explorer, char *name) {
   (void)name;
   error_tag_count++;
   return SXMLExplorerContinue;
 }
 
-static unsigned char error_on_content(char *content) {
+static unsigned char error_on_content(SXMLExplorer* explorer, char *content) {
   (void)content;
   return SXMLExplorerContinue;
 }
@@ -294,26 +294,26 @@ static unsigned int rss_tag_index = 0;
 static unsigned int rss_attr_index = 0;
 static unsigned int rss_content_index = 0;
 
-static unsigned char rss_on_tag(char* name) {
+static unsigned char rss_on_tag(SXMLExplorer* explorer, char* name) {
     CU_ASSERT(rss_tag_index < sizeof(rss_expected_tags)/sizeof(rss_expected_tags[0]));
     CU_ASSERT_STRING_EQUAL(name, rss_expected_tags[rss_tag_index]);
     rss_tag_index++;
     return SXMLExplorerContinue;
 }
 
-static unsigned char rss_on_attr_key(char* key) {
+static unsigned char rss_on_attr_key(SXMLExplorer* explorer, char* key) {
     CU_ASSERT(rss_attr_index < sizeof(rss_expected_attr_keys)/sizeof(rss_expected_attr_keys[0]));
     CU_ASSERT_STRING_EQUAL(key, rss_expected_attr_keys[rss_attr_index]);
     return SXMLExplorerContinue;
 }
 
-static unsigned char rss_on_attr_val(char* val) {
+static unsigned char rss_on_attr_val(SXMLExplorer* explorer, char* val) {
     CU_ASSERT_STRING_EQUAL(val, rss_expected_attr_vals[rss_attr_index]);
     rss_attr_index++;
     return SXMLExplorerContinue;
 }
 
-static unsigned char rss_on_content(char* content) {
+static unsigned char rss_on_content(SXMLExplorer* explorer, char* content) {
     while (*content && isspace((unsigned char)*content)) content++;
     if (*content == '\0') return SXMLExplorerContinue;
     CU_ASSERT(rss_content_index < sizeof(rss_expected_content)/sizeof(rss_expected_content[0]));
@@ -362,26 +362,26 @@ static unsigned int atom_entry_tag_index = 0;
 static unsigned int atom_entry_attr_index = 0;
 static unsigned int atom_entry_content_index = 0;
 
-static unsigned char atom_entry_on_tag(char* name) {
+static unsigned char atom_entry_on_tag(SXMLExplorer* explorer, char* name) {
     CU_ASSERT(atom_entry_tag_index < sizeof(atom_entry_expected_tags)/sizeof(atom_entry_expected_tags[0]));
     CU_ASSERT_STRING_EQUAL(name, atom_entry_expected_tags[atom_entry_tag_index]);
     atom_entry_tag_index++;
     return SXMLExplorerContinue;
 }
 
-static unsigned char atom_entry_on_attr_key(char* key) {
+static unsigned char atom_entry_on_attr_key(SXMLExplorer* explorer, char* key) {
     CU_ASSERT(atom_entry_attr_index < sizeof(atom_entry_expected_attr_keys)/sizeof(atom_entry_expected_attr_keys[0]));
     CU_ASSERT_STRING_EQUAL(key, atom_entry_expected_attr_keys[atom_entry_attr_index]);
     return SXMLExplorerContinue;
 }
 
-static unsigned char atom_entry_on_attr_val(char* val) {
+static unsigned char atom_entry_on_attr_val(SXMLExplorer* explorer, char* val) {
     CU_ASSERT_STRING_EQUAL(val, atom_entry_expected_attr_vals[atom_entry_attr_index]);
     atom_entry_attr_index++;
     return SXMLExplorerContinue;
 }
 
-static unsigned char atom_entry_on_content(char* content) {
+static unsigned char atom_entry_on_content(SXMLExplorer* explorer, char* content) {
     while (*content && isspace((unsigned char)*content)) content++;
     if (*content == '\0') return SXMLExplorerContinue;
     CU_ASSERT(atom_entry_content_index < sizeof(atom_entry_expected_content)/sizeof(atom_entry_expected_content[0]));
@@ -419,7 +419,7 @@ static const char* comments_expected[] = {
 };
 static unsigned int comments_index = 0;
 
-static unsigned char comments_callback(char* text) {
+static unsigned char comments_callback(SXMLExplorer* explorer, char* text) {
     CU_ASSERT(comments_index < sizeof(comments_expected)/sizeof(comments_expected[0]));
     CU_ASSERT_STRING_EQUAL(text, comments_expected[comments_index]);
     comments_index++;
@@ -446,7 +446,7 @@ void test_with_comments(void) {
 // Test for XML with CDATA
 static unsigned int cdata_content_index = 0;
 static const char* cdata_expected = "This is some CDATA text with < and > characters.";
-static unsigned char cdata_on_content(char* c) {
+static unsigned char cdata_on_content(SXMLExplorer* explorer, char* c) {
     while (*c && isspace((unsigned char)*c)) c++;
     if (*c != '\0') {
         CU_ASSERT_STRING_EQUAL(c, cdata_expected);
@@ -478,7 +478,7 @@ static unsigned int large_doc_content_count = 0;
 static unsigned int large_doc_attr_count = 0;
 static unsigned int large_doc_comment_count = 0;
 
-static unsigned char large_doc_on_tag(char* name) {
+static unsigned char large_doc_on_tag(SXMLExplorer* explorer, char* name) {
     (void)name;
     // For now, just count tags without strict checking to see what we get
     large_doc_tag_index++;
@@ -487,7 +487,7 @@ static unsigned char large_doc_on_tag(char* name) {
     return SXMLExplorerContinue;
 }
 
-static unsigned char large_doc_on_content(char* content) {
+static unsigned char large_doc_on_content(SXMLExplorer* explorer, char* content) {
     // Skip empty/whitespace-only content
     char* trimmed = content;
     while (*trimmed && isspace((unsigned char)*trimmed)) trimmed++;
@@ -497,18 +497,18 @@ static unsigned char large_doc_on_content(char* content) {
     return SXMLExplorerContinue;
 }
 
-static unsigned char large_doc_on_attr_key(char* key) {
+static unsigned char large_doc_on_attr_key(SXMLExplorer* explorer, char* key) {
     (void)key;
     large_doc_attr_count++;
     return SXMLExplorerContinue;
 }
 
-static unsigned char large_doc_on_attr_val(char* val) {
+static unsigned char large_doc_on_attr_val(SXMLExplorer* explorer, char* val) {
     (void)val;
     return SXMLExplorerContinue;
 }
 
-static unsigned char large_doc_on_comment(char* comment) {
+static unsigned char large_doc_on_comment(SXMLExplorer* explorer, char* comment) {
     // Verify it's the expected comment
     CU_ASSERT(strstr(comment, "This library system supports multiple formats") != NULL);
     large_doc_comment_count++;
