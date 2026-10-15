@@ -7,7 +7,7 @@
 #include <ctype.h>
 #include <malloc.h>
 #include "sparsexml.h"
-#include "tinyxml_stub.h"
+#include "tinyxml_bench.h"
 
 static const char unicode_xml[] = 
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"

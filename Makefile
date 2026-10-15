@@ -1,5 +1,6 @@
 CC ?= gcc
 CFLAGS ?= -Wall -Wextra -g -O0
+CXXFLAGS ?= -Wall -Wextra -g -O0
 override CPPFLAGS += -I.
 LDFLAGS ?= -Wl,-z,noexecstack
 
@@ -22,12 +23,14 @@ BENCH_SRC = bench/bench.c \
             bench/bench_stress_test.c \
             bench/bench_unicode_content.c \
             bench/bench_exi.c \
-            bench/tinyxml_stub.c \
             bench/main.c
-BENCH_OBJ = $(BENCH_SRC:.c=.o)
+# TinyXML-2 for the comparison, from the system unless given otherwise
+TINYXML2_CFLAGS ?=
+TINYXML2_LIBS ?= -ltinyxml2
+BENCH_OBJ = $(BENCH_SRC:.c=.o) bench/tinyxml_bench.o
 
 # Each benchmark also has a main() of its own unless built as a library
-BENCH_LIBRARY_OBJ = $(filter-out bench/tinyxml_stub.o bench/main.o,$(BENCH_OBJ))
+BENCH_LIBRARY_OBJ = $(filter-out bench/tinyxml_bench.o bench/main.o,$(BENCH_OBJ))
 $(BENCH_LIBRARY_OBJ): override CPPFLAGS += -DBENCH_LIBRARY
 
 all: test-sparsexml examples/simple bench/bench
@@ -42,7 +45,10 @@ examples/simple: $(OBJ) $(EXAMPLES_OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 bench/bench: $(OBJ) $(BENCH_OBJ)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ -lexpat
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ -lexpat $(TINYXML2_LIBS)
+
+bench/tinyxml_bench.o: bench/tinyxml_bench.cpp bench/tinyxml_bench.h
+	$(CXX) $(CPPFLAGS) $(TINYXML2_CFLAGS) $(CXXFLAGS) -c $< -o $@
 
 %.o: %.c sparsexml.h sparsexml-priv.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
