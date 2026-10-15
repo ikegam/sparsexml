@@ -4,7 +4,7 @@
 本論文では、組み込みシステムに適した軽量XMLパーサであるSparseXMLの機能および性能を検証し、既存のXML処理ライブラリとの比較を行う。SparseXMLは1KBの固定バッファを利用することで最小限のメモリ使用量を実現し、イベント駆動型のSAXスタイルインタフェースを提供する。また、XMLは任意の位置で分割して逐次入力でき、W3CのEXI（Efficient XML Interchange）フォーマットについてもスキーマレスEXIのデコーダを備える。本研究では、関連研究の調査を行った上で、テストスイートを用いた実験による評価を実施した。
 
 ## 1. イントロダクション
-近年、IoTや組み込みデバイスの増加に伴い、リソース制約の厳しい環境でもXMLデータを扱う需要が高まっている。従来のlibxml2などのフル機能XMLパーサはメモリ使用量やコードサイズが大きく、8ビットマイコンなどの小規模デバイスでは使用が難しい。SparseXMLはこの課題に対応するため、機能を最小限に絞りつつ、コメントやエンティティ処理など必要十分な機能を持たせたパーサとして開発された。
+近年、IoTや組み込みデバイスの増加に伴い、リソース制約の厳しい環境でもXMLデータを扱う需要が高まっている。従来のlibxml2 [21] などのフル機能XMLパーサはメモリ使用量やコードサイズが大きく、8ビットマイコンなどの小規模デバイスでは使用が難しい。SparseXMLはこの課題に対応するため、機能を最小限に絞りつつ、コメントやエンティティ処理など必要十分な機能を持たせたパーサとして開発された [6]。
 
 本論文では、SparseXMLの設計方針と主要機能を解説し、関連研究との比較を通して本ライブラリの有用性を明らかにする。また、提供されているテストスイートを用いて正確性と拡張機能の動作を確認し、組み込み環境における利用可能性を評価する。
 
@@ -14,31 +14,31 @@ SparseXMLは、IoT機器の通信とXMLの交点に位置する。関連研究�
 ### 2.1 IoTの通信規格におけるXMLとEXI
 IoTの通信規格には、XMLやEXIでメッセージを表現するものが多い。これらは、SparseXMLが機器上で解析する対象である。
 
-- **SenML（RFC 8428）**: センサの測定値を表すIETFの形式で、共通のデータモデルをJSON、CBOR、XML、EXIの4つで表現できる。
-- **IEEE 2030.5（Smart Energy Profile 2.0）**: 電力機器向けのREST型プロトコルで、メッセージをXMLまたはEXIで符号化する（`application/sep+xml`、`application/sep-exi`）。
-- **XMPPのIoT拡張**: XEP-0323〜0326がセンサデータや制御を、XEP-0322がEXIによる圧縮を定める。ただし、XEP-0322は現在Deferredの状態である。
-- **ISO 15118、DIN 70121**: 電気自動車と充電器の通信規格で、スキーマ情報付きEXIを使う。OpenV2GやcbExiGenは、これらのスキーマ専用のコーデックを生成する。
+- **SenML（RFC 8428）** [12]: センサの測定値を表すIETFの形式で、共通のデータモデルをJSON、CBOR、XML、EXIの4つで表現できる。
+- **IEEE 2030.5（Smart Energy Profile 2.0）** [13]: 電力機器向けのREST型プロトコルで、メッセージをXMLまたはEXIで符号化する（`application/sep+xml`、`application/sep-exi`）。
+- **XMPPのIoT拡張**: XEP-0323〜0326がセンサデータや制御を、XEP-0322がEXIによる圧縮を定める [14]。ただし、XEP-0322は現在Deferredの状態である。
+- **ISO 15118、DIN 70121**: 電気自動車と充電器の通信規格で、スキーマ情報付きEXIを使う。OpenV2G [10] やcbExiGen [11] は、これらのスキーマ専用のコーデックを生成する。
 
 いずれの規格でも、メッセージの形式はスキーマで決まっている。SparseXMLが検証をホストに任せ、機器では決まった形式のメッセージを読むことに専念する設計（6.4節、6.5節）は、こうした用途を前提としている。
 
 ### 2.2 制約のある機器でのEXI処理
 テキストのXMLは機器には重すぎるとして、EXIで解決しようとする研究がある。SparseXMLとは同じ問題に、EXIの側から取り組んでいる。
 
-- **Käbischら（WEBIST 2012）**: テキストのXMLは、解析の計算量とメモリ消費のためにマイコンでは使えないとしたうえで、EXIのデータをXPathの購読条件で絞り込む方式を示した。対象としたのは、24MHzのCortex-M3、RAM 8KB、フラッシュ128KBの機器である。
-- **Kyusakovら（ACM Transactions on the Web, 2014）**: 組み込み向けのEXI実装EXIPを、組み込み機器でWebサービスを開発する枠組みとして示した。
-- **Peintner（博士論文, 2014）**: EXIficientの作者で、組み込み機器でのEXIについて、実行時のメモリ使用を抑え、その増え方を予測する手法を論じた。
-- **W3C「EXI Profile for limiting usage of dynamic memory」（2014年勧告）**: センサやマイコンのような低メモリの機器向けに、EXIの動的メモリの使用を制限するプロファイルを定めた。SparseXMLがヒープを使わないことと、同じ問題意識に立つ。
-- **佐藤・土井・寺本（情報処理学会論文誌 コンシューマ・デバイス&システム, 2012）**: XMLを経由せずにEXIを直接扱う「XML-Less EXI」を提案し、ZigBee SEP 2.0のデータ形式に対応した家電用の通信アダプタを試作して評価した。
+- **Käbischら（WEBIST 2012）** [15]: テキストのXMLは、解析の計算量とメモリ消費のためにマイコンでは使えないとしたうえで、EXIのデータをXPathの購読条件で絞り込む方式を示した。対象としたのは、24MHzのCortex-M3、RAM 8KB、フラッシュ128KBの機器である。
+- **Kyusakovら（ACM Transactions on the Web, 2014）** [16]: 組み込み向けのEXI実装EXIP [9] を、組み込み機器でWebサービスを開発する枠組みとして示した。
+- **Peintner（博士論文, 2014）** [17]: EXIficient [8] の作者で、組み込み機器でのEXIについて、実行時のメモリ使用を抑え、その増え方を予測する手法を論じた。
+- **W3C「EXI Profile for limiting usage of dynamic memory」（2014年勧告）** [18]: センサやマイコンのような低メモリの機器向けに、EXIの動的メモリの使用を制限するプロファイルを定めた。SparseXMLがヒープを使わないことと、同じ問題意識に立つ。
+- **佐藤・土井・寺本（情報処理学会論文誌 コンシューマ・デバイス&システム, 2012）** [19]: XMLを経由せずにEXIを直接扱う「XML-Less EXI」を提案し、ZigBee SEP 2.0のデータ形式に対応した家電用の通信アダプタを試作して評価した。
 
 これらの研究は、テキストのXMLを機器で扱うことは難しいという前提に立つ。SparseXMLは、テキストのXMLも約1.2KBのRAMと約4.2KBのコードで解析できることを示し（5章）、さらにスキーマなしのEXIも同じインタフェースで扱える。
 
 ### 2.3 組み込み向けのXMLパーサ
 SparseXMLと直接比較される、組み込み向けの軽量なパーサには次のようなものがある。
 
-- **TinyXML、TinyXML-2**: 小規模ながらDOMツリーを構築する方式をとり、メモリ使用量が文書の大きさに比例する。
-- **Mini-XML**: 通常のCライブラリに依存しない設計が特徴だが、DOMベースであるためデータ量に比例してメモリを消費する。
-- **libexpat**: ストリーミング型の実装で、メモリ効率は良いもののコードサイズが相対的に大きい。
-- **saxml**: ESP32などのマイコン向けのSAX型パーサで、文書を1文字ずつ受け取り、ヒープに文書を保持しない。
+- **TinyXML [2]、TinyXML-2 [7]**: 小規模ながらDOMツリーを構築する方式をとり、メモリ使用量が文書の大きさに比例する。
+- **Mini-XML** [3]: 通常のCライブラリに依存しない設計が特徴だが、DOMベースであるためデータ量に比例してメモリを消費する。
+- **libexpat** [1]: ストリーミング型の実装で、メモリ効率は良いもののコードサイズが相対的に大きい。
+- **saxml** [20]: ESP32などのマイコン向けのSAX型パーサで、文書を1文字ずつ受け取り、ヒープに文書を保持しない。
 
 SparseXMLはSAXスタイルのイベント駆動型であり、DOMツリーを構築しないためメモリ使用量が非常に小さい。また、組み込みシステムで一般的に不足しがちなヒープ領域を一切使用せず、固定サイズのバッファのみで処理を完結させる点が他ライブラリと異なる。`sxml_init_explorer()`で呼び出し側が用意したメモリに解析器を配置でき、EXIの作業領域も`sxml_set_exi_workspace()`で静的バッファを渡せるため、ヒープが存在しないシステムや、動的メモリアロケーションを避ける必要がある組み込み環境でも利用可能である。
 
@@ -59,7 +59,7 @@ SparseXMLではこれらの問題点を解決するため、以下の設計方�
 4. **機能の選択的実装**: コメント、CDATA、エンティティ、名前空間、簡易DOCTYPEとい
    った基本機能に絞り、DTD検証や高度な名前空間URI解決などは省略した。スキーマに
    よる検証はデバイスでは行わず、開発環境（ホスト）で行う方針である（6.4節）。
-5. **EXI（Efficient XML Interchange）サポート**: W3C標準のバイナリXMLフォーマットに
+5. **EXI（Efficient XML Interchange）サポート**: W3C標準のバイナリXMLフォーマット [4][5] に
    対応した。組み込みの文法（built-in grammar）と文法学習、文字列テーブルを実装し、
    EXIficientで生成したストリームをXMLと同じコールバックで受け取れる。EXIは文書全体を
    メモリに置いてデコードし、途中で切れたデータはエラーとして報告する。
@@ -87,7 +87,7 @@ SparseXMLではこれらの問題点を解決するため、以下の設計方�
 | DTD検証               | ○       | ×      | ×      | ×        | デバイスでは行わず、ホストで検証する方針 |
 
 ## 4. 実装
-SparseXMLは`sample/simple`に示されるように、ユーザがコールバック関数を登録する形式で利用する。主なAPIは以下のとおりである。
+SparseXMLは`examples/simple.c`に示されるように、ユーザがコールバック関数を登録する形式で利用する。主なAPIは以下のとおりである。
 
 ```c
 SXMLExplorer* sxml_make_explorer(void);
@@ -111,7 +111,7 @@ unsigned char sxml_run_explorer_exi(SXMLExplorer* explorer,
                                    unsigned int len);
 ```
 
-エンティティ処理や名前空間処理はオプションとして有効化でき、用途に応じて機能を絞ることが可能である。詳細なAPIはリポジトリの`README.md`で解説されている【F:README.md†L32-L63】。
+エンティティ処理や名前空間処理はオプションとして有効化でき、用途に応じて機能を絞ることが可能である。詳細なAPIはリポジトリの`README.md`で解説されている [6]。
 本リポジトリにはベンチマークやテスト用の多数のファイルが含まれているが、ライブラリ本体は`sparsexml.h`、`sparsexml-priv.h`、`sparsexml.c`の3ファイルのみで構成されている。利用者が確認すべき公開インタフェースは`sparsexml.h`だけである。
 
 ## 5. 評価
@@ -308,24 +308,24 @@ SparseXMLは、文書を任意の順で参照したり書き換えたりでき�
 今後はより大規模なベンチマークや実際の組み込みデバイス上での性能測定を通じて、さらなる最適化を検討していく。特にEXI処理のさらなる最適化や、5G/IoT環境でのリアルタイム処理性能の向上が期待される。
 
 ## 8. 参考文献
-1. Clark, J., & Expat project. "Expat XML Parser." 1998.
-2. Lee, C. "TinyXML: XML Parser for Small Projects." 2000.
-3. Drake, M. "Mini-XML." 2003.
-4. W3C. "Efficient XML Interchange (EXI) Format 1.0 (Second Edition)." W3C Recommendation, 2014.
-5. Kamiya, T., & Schneider, J. "Efficient XML Interchange (EXI) Primer." W3C Working Group Note, 2014.
-6. SparseXML Project. "SparseXML: Minimal XML Parser for Embedded Systems." Git Repository, 2023.
+1. Clark, J., & Expat project. "Expat XML Parser." 1998. https://libexpat.github.io/
+2. Thomason, L. "TinyXML." 2000. http://www.grinninglizard.com/tinyxml/
+3. Sweet, M. R. "Mini-XML." 2003. https://www.msweet.org/mxml/
+4. Schneider, J., Kamiya, T., Peintner, D., & Kyusakov, R. (Eds.). "Efficient XML Interchange (EXI) Format 1.0 (Second Edition)." W3C Recommendation, 11 February 2014. https://www.w3.org/TR/exi/
+5. Peintner, D., & Pericas-Geertsen, S. (Eds.). "Efficient XML Interchange (EXI) Primer." W3C Working Draft, 24 April 2014. https://www.w3.org/TR/exi-primer/
+6. Ikegami, H. "SparseXML: Minimal XML and EXI parser for microcontrollers." Git repository, 2013–. https://github.com/ikegam/sparsexml
 7. Thomason, L. "TinyXML-2." https://github.com/leethomason/tinyxml2
 8. Peintner, D. "EXIficient." https://github.com/EXIficient
 9. Kyusakov, R. "EXIP: Embeddable EXI Processor in C." https://exip.sourceforge.net/
-10. Siemens AG. "OpenV2G." ISO/IEC 15118 and DIN 70121 implementation in C.
+10. Siemens AG. "OpenV2G." ISO/IEC 15118 and DIN 70121 implementation in C. https://sourceforge.net/projects/openv2g/
 11. chargebyte GmbH / EVerest. "cbExiGen." https://github.com/EVerest/cbexigen
-12. Jennings, C., Shelby, Z., Arkko, J., Keränen, A., & Bormann, C. "Sensor Measurement Lists (SenML)." RFC 8428, IETF, 2018.
-13. IEEE. "IEEE Standard for Smart Energy Profile Application Protocol." IEEE Std 2030.5.
-14. XMPP Standards Foundation. "XEP-0322: Efficient XML Interchange (EXI) Format." Version 0.6.0, 2018.
-15. Käbisch, S., Kuntschke, R., Heuer, J., & Kosch, H. "Efficient Filtering of Binary XML in Resource Restricted Embedded Networks." Proc. WEBIST 2012, pp. 174–182, 2012.
-16. Kyusakov, R., Puñal Pereira, P., Eliasson, J., & Delsing, J. "EXIP: A Framework for Embedded Web Development." ACM Transactions on the Web, 8(4), 2014.
-17. Peintner, D. "Efficient Exchange and Processing of Semi-structured Data in the Embedded Domain." Doctoral thesis, University of Passau, 2014.
-18. W3C. "Efficient XML Interchange (EXI) Profile for limiting usage of dynamic memory." W3C Recommendation, 2014.
-19. 佐藤由美子, 土井裕介, 寺本圭一. "XML-Less EXIを搭載した家電用通信アダプタの試作および評価." 情報処理学会論文誌 コンシューマ・デバイス&システム, Vol.2, No.2, pp.54–62, 2012.
+12. Jennings, C., Shelby, Z., Arkko, J., Keränen, A., & Bormann, C. "Sensor Measurement Lists (SenML)." RFC 8428, IETF, 2018. https://doi.org/10.17487/RFC8428
+13. IEEE. "IEEE Standard for Smart Energy Profile Application Protocol." IEEE Std 2030.5-2018 (superseded by IEEE Std 2030.5-2023). https://standards.ieee.org/ieee/2030.5/11216/
+14. XMPP Standards Foundation. "XEP-0322: Efficient XML Interchange (EXI) Format." Version 0.6.0, 2018. https://xmpp.org/extensions/xep-0322.html
+15. Käbisch, S., Kuntschke, R., Heuer, J., & Kosch, H. "Efficient Filtering of Binary XML in Resource Restricted Embedded Networks." Proc. WEBIST 2012, pp. 174–182, 2012. https://doi.org/10.5220/0003939001740182
+16. Kyusakov, R., Puñal Pereira, P., Eliasson, J., & Delsing, J. "EXIP: A Framework for Embedded Web Development." ACM Transactions on the Web, 8(4), 2014. https://exip.sourceforge.net/publications.html
+17. Peintner, D. "Efficient Exchange and Processing of Semi-structured Data in the Embedded Domain." Doctoral thesis, University of Passau, 2014. https://opus4.kobv.de/opus4-uni-passau/files/241/Peintner_Daniel.pdf
+18. Fablet, Y., & Peintner, D. (Eds.). "Efficient XML Interchange (EXI) Profile for limiting usage of dynamic memory." W3C Recommendation, 9 September 2014. https://www.w3.org/TR/exi-profile/
+19. 佐藤由美子, 土井裕介, 寺本圭一. "XML-Less EXIを搭載した家電用通信アダプタの試作および評価." 情報処理学会論文誌 コンシューマ・デバイス&システム, Vol.2, No.2, pp.54–62, 2012. https://ipsj.ixsq.nii.ac.jp/record/87776/files/IPSJ-TCDS0202007.pdf
 20. zorxx. "saxml." ESP-IDF component, https://components.espressif.com/components/zorxx/saxml
-
+21. Veillard, D., et al. "libxml2." https://gitlab.gnome.org/GNOME/libxml2
